@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AtmosPhotic - Photography Opportunity Predictor</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#8A2BE2">
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+</head>
+<body class="streamlined-mode">
+
+  <!-- Top Navigation Header -->
+  <header class="app-header">
+    <div class="brand-container">
+      <h1 class="logo-text">Atmos<span>Photic</span></h1>
+      <span class="badge-tag">PWA v0.4.5</span>
+    </div>
+    
+    <!-- Search Bar + Second Row Action Bar (Streamlined/Verbose + Favorite + Info) -->
+    <div class="header-controls">
+      <div class="search-container">
+        <div class="search-input-wrap">
+          <input type="search" id="locationSearchInput" class="search-input" placeholder="Search any location worldwide..." aria-label="Search location">
+        </div>
+        <div id="searchResultsDropdown" class="search-dropdown hidden"></div>
+      </div>
+
+      <!-- Action Row: Streamlined/Verbose on the exact same line as Favorite & Info -->
+      <div class="header-action-row">
+        <div class="mode-toggle-group" role="group" aria-label="Information Density Mode">
+          <button id="modeStreamlinedBtn" class="mode-btn active" title="Clean, compact view">Streamlined</button>
+          <button id="modeVerboseBtn" class="mode-btn" title="Detailed descriptions & weights">Verbose</button>
+        </div>
+
+        <div class="header-icon-actions">
+          <button id="favoriteToggleBtn" class="fav-toggle-btn" title="Save or Remove Favorite">❤️</button>
+          <button id="globalHelpBtn" class="help-toggle-btn" title="App Guide & Documentation">ℹ️</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Layout -->
+  <main class="main-container">
+    
+    <!-- Active Location Summary Banner -->
+    <section class="location-banner card">
+      <div>
+        <div class="title-row">
+          <h2 id="locName">Detecting Location...</h2>
+          <span id="favStatusBadge" class="fav-badge hidden">Saved Favorite</span>
+          <button class="info-icon-btn" data-info-key="locationBanner" title="About Active Location">ℹ️</button>
+        </div>
+        <p id="locCategory" class="subtitle">--</p>
+        <p id="locDescription" class="verbose-only-text subtitle-desc">--</p>
+      </div>
+      <div class="coords-box" id="locCoords">--</div>
+    </section>
+
+    <!-- Map View Section with Interactive Microclimate Radius Presets -->
+    <section class="map-section card">
+      <div class="section-title-wrap flex-between map-header-bar">
+        <div>
+          <div class="title-row">
+            <h3>Spatial View</h3>
+            <button class="info-icon-btn" data-info-key="spatialMap" title="How to use the interactive map & radius overlay">ℹ️</button>
+          </div>
+          <span class="subtext">Tap anywhere on map · Zone: <strong id="activeRadiusLabel" class="accent-teal-text">5 mi</strong> (<span id="activeAreaLabel">~78.5 sq mi</span>)</span>
+        </div>
+
+        <!-- Quick-Tap Distance Preset Buttons -->
+        <div class="radius-preset-group" role="group" aria-label="Monitoring Radius Presets">
+          <span class="radius-prefix-label">Radius:</span>
+          <button class="radius-btn" data-radius-miles="1">1 mi</button>
+          <button class="radius-btn active" data-radius-miles="5">5 mi</button>
+          <button class="radius-btn" data-radius-miles="10">10 mi</button>
+        </div>
+      </div>
+      <div id="map" class="map-viewport"></div>
+    </section>
+
+    <!-- Interactive Horizon & Time Controls -->
+    <section class="timeline-section card">
+      <div class="timeline-header">
+        <div class="title-row">
+          <h4>48-Hour Prediction Horizon</h4>
+          <button class="info-icon-btn" data-info-key="predictionHorizon" title="About the 48-Hour Prediction Horizon">ℹ️</button>
+        </div>
+        <div id="activeTimeLabel" class="time-readout">--</div>
+      </div>
+      <input type="range" id="timeSlider" min="0" max="47" value="0" class="time-slider">
+      <div class="timeline-ticks">
+        <span>Current</span>
+        <span>+12h</span>
+        <span>+24h</span>
+        <span>+36h</span>
+        <span>+48h</span>
+      </div>
+    </section>
+
+    <!-- Condition Scoring Focus Grid (Grouped by Type) -->
+    <section class="scoring-section">
+      <div class="section-title-wrap compact-section-head">
+        <div class="title-row">
+          <h3>Phenomena Predictions</h3>
+          <button class="info-icon-btn" data-info-key="phenomenaOverview" title="How phenomena scores are calculated">ℹ️</button>
+          <span class="subtext inline-subtext">· Grouped by type</span>
+        </div>
+      </div>
+      <div id="phenomenaGroupsContainer" class="phenomena-groups-container"></div>
+    </section>
+
+    <!-- Atmospheric Parameters Detail Breakdown -->
+    <section class="details-section card">
+      <div class="section-title-wrap">
+        <div class="title-row">
+          <h4>Atmospheric & Ocean Metrics (Live Feed)</h4>
+          <button class="info-icon-btn" data-info-key="metricsOverview" title="About live atmospheric and marine metrics">ℹ️</button>
+        </div>
+        <p class="verbose-only-text subtext">Tap any metric's ℹ️ icon to view its photographic significance and ideal threshold.</p>
+      </div>
+      <div id="metricsBreakdown" class="metrics-grid"></div>
+    </section>
+
+    <!-- Favorites Quick Drawer -->
+    <section class="favorites-section card">
+      <div class="title-row">
+        <h4>Your Favorite Locations</h4>
+        <button class="info-icon-btn" data-info-key="favoritesSection" title="Managing saved locations">ℹ️</button>
+      </div>
+      <div id="favoritesList" class="favorites-list">
+        <p class="subtext">No favorites added yet. Tap the heart ❤️ icon to save locations.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Item & Guide Info Modal -->
+  <div id="infoModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="infoModalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="infoModalTitle">Information</h3>
+        <button id="closeInfoModalBtn" class="modal-close-btn" aria-label="Close modal">&times;</button>
+      </div>
+      <div id="infoModalBody" class="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Custom Favorite Title Modal -->
+  <div id="favoriteModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="favModalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="favModalTitle">Save Location to Favorites</h3>
+        <button id="closeFavModalBtn" class="modal-close-btn" aria-label="Close modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="subtext" style="margin-bottom: 0.5rem;">Give this spot a memorable custom title (especially helpful for coordinates tapped directly on the map):</p>
+        <label for="customFavTitleInput" class="sr-only">Location Title</label>
+        <input type="text" id="customFavTitleInput" class="search-input" placeholder="e.g. Secret Coastal Overlook">
+        <div class="modal-coords-preview" id="favModalCoordsPreview">--</div>
+        <div class="modal-actions">
+          <button id="cancelFavSaveBtn" class="btn-secondary">Cancel</button>
+          <button id="confirmFavSaveBtn" class="btn-primary">Save Favorite ❤️</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="app-footer">
+    <p>AtmosPhotic &copy; 2026 · Powered by Open-Meteo & NOAA APIs</p>
+  </footer>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="app.js"></script>
+</body>
+</html>
