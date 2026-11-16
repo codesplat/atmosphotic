@@ -1,10 +1,9 @@
 /**
- * AtmosPhotic PWA Core Engine (v0.4.5)
- * - Changed timeline start label from "Now" to "Current"
- * - Implemented Stale-While-Revalidate (SWR) forecast caching in LocalStorage:
- *   1. Instant render from cached 48-hour forecast on cold startup or offline mode
- *   2. Silent background revalidation on app launch and when returning to foreground
- *   3. Auto-realigns cached timeline index to current local hour even while offline
+ * AtmosPhotic PWA Core Engine (Alpha v0.4.6)
+ * - Updated header & footer branding to Alpha release designation
+ * - Added center-on-current-user-location action button on Spatial View map card
+ * - Changed searched location description from "Custom searched location..." to "Searched location..."
+ * - Preserved Stale-While-Revalidate (SWR) forecast caching and "Current" timeline labeling
  */
 
 const FREMONT_FALLBACK_LOC = {
@@ -39,7 +38,7 @@ let monitoringRadiusMiles = parseFloat(localStorage.getItem('atmosphotic_radius_
 
 const INFO_CONTENT = {
   globalGuide: {
-    title: 'AtmosPhotic User Guide & Engine Overview',
+    title: 'AtmosPhotic Alpha User Guide & Engine Overview',
     html: `
       <h4>1. Startup Location & Offline Resilience (Stale-While-Revalidate)</h4>
       <p>AtmosPhotic automatically loads your <strong>last selected location</strong>. Cached 48-hour forecast telemetry renders immediately on cold startup or offline, while fresh Open-Meteo data is silently fetched in the background whenever the app launches or returns to the foreground.</p>
@@ -50,6 +49,7 @@ const INFO_CONTENT = {
       <h4>3. Searching, Tapping the Map & Microclimate Radius</h4>
       <ul>
         <li><strong>Global Text Search:</strong> Type any city, region, or major landmark into the search bar to fetch coordinates via the Open-Meteo Geocoding API.</li>
+        <li><strong>Center on User Location:</strong> Tap the crosshair/locate icon next to the radius presets on the map card to re-center on your current GPS position.</li>
         <li><strong>Direct Map Click / Tap:</strong> Click or tap anywhere on the Leaflet map to drop a pin and immediately pull live forecasts for those exact coordinates.</li>
         <li><strong>Spatial Radius Overlay:</strong> Use the <strong>1 mi</strong>, <strong>5 mi</strong>, and <strong>10 mi</strong> preset buttons above the map to visualize the spatial footprint of your microclimate monitoring zone.</li>
       </ul>
@@ -71,6 +71,7 @@ const INFO_CONTENT = {
       <p>Powered by OpenStreetMap and Leaflet.js, this viewport displays your active coordinate pin surrounded by a shaded <strong>microclimate monitoring radius circle</strong>.</p>
       <ul>
         <li><strong>Distance Presets (1 mi, 5 mi, 10 mi):</strong> Quickly resize the spatial footprint to judge local fog banks, coastal marine layers, or valley inversions around your pin.</li>
+        <li><strong>Center on Current Location:</strong> Tap the crosshair button next to the radius controls to center the map on your device's GPS location.</li>
         <li><strong>Tap Anywhere for Instant Forecasts:</strong> Click or tap any spot on the map to relocate the pin and fetch a fresh 48-hour forecast.</li>
       </ul>
     `
@@ -196,7 +197,6 @@ function getCachedForecast(lat, lng) {
     return null;
   }
 
-  // Trim any past hours from the cached array so index 0 ("Current") always aligns with the current local hour
   const localHourPrefix = getLocalHourPrefix();
   const currentIdx = entry.forecast.findIndex(item => item.timestamp && item.timestamp.startsWith(localHourPrefix));
 
@@ -218,7 +218,6 @@ function saveCachedForecast(lat, lng, forecastArray) {
       forecast: forecastArray
     };
 
-    // Keep storage bounded to the most recently updated locations
     const keys = Object.keys(cacheMap);
     if (keys.length > MAX_CACHED_LOCATIONS) {
       keys.sort((a, b) => (cacheMap[a].updatedAt || 0) - (cacheMap[b].updatedAt || 0));
@@ -251,7 +250,6 @@ function setupForegroundRevalidation() {
     if (document.visibilityState !== 'visible') return;
     if (!currentLoc) return;
 
-    // Throttle duplicate triggers if focus & visibilitychange fire back-to-back
     const now = Date.now();
     if (isRevalidating || (now - lastRevalidationAt) < 15000) return;
 
@@ -270,7 +268,6 @@ function resolveInitialLocation() {
       if (parsedLoc && typeof parsedLoc.lat === 'number' && typeof parsedLoc.lng === 'number') {
         currentLoc = { ...parsedLoc, forecast: [] };
         initMap(currentLoc);
-        // SWR: Loads cached forecast instantly if present, then revalidates silently in background
         loadWeatherDataForLocation(currentLoc, false);
         return;
       }
@@ -308,6 +305,55 @@ function resolveInitialLocation() {
   } else {
     loadWeatherDataForLocation({ ...FREMONT_FALLBACK_LOC }, false);
   }
+}
+
+/**
+ * Center Map & Load Telemetry for Current User GPS Position
+ */
+function centerOnCurrentUserLocation() {
+  const locateBtn = document.getElementById('centerCurrentLocBtn');
+
+  if (!('geolocation' in navigator)) {
+    openInfoModal('Geolocation Unavailable', '<p>Your browser or device does not support GPS geolocation.</p>');
+    return;
+  }
+
+  if (locateBtn) {
+    locateBtn.classList.add('locating');
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      if (locateBtn) locateBtn.classList.remove('locating');
+
+      const userLat = parseFloat(position.coords.latitude.toFixed(4));
+      const userLng = parseFloat(position.coords.longitude.toFixed(4));
+      const userLoc = {
+        id: `user-gps-${userLat}-${userLng}`.replace(/\./g, '_'),
+        name: 'Current Location',
+        category: 'Device GPS Coordinates',
+        lat: userLat,
+        lng: userLng,
+        description: 'Live atmospheric and marine telemetry at your current GPS position.',
+        isMapPin: true,
+        forecast: []
+      };
+
+      const searchInput = document.getElementById('locationSearchInput');
+      if (searchInput) searchInput.value = '';
+
+      loadWeatherDataForLocation(userLoc, true);
+    },
+    (error) => {
+      if (locateBtn) locateBtn.classList.remove('locating');
+      console.warn('Unable to retrieve current user location:', error.message);
+      openInfoModal(
+        'Location Access Needed',
+        `<p>Unable to access your current GPS location (${error.message}). Please verify location permissions are enabled for this site in your browser settings.</p>`
+      );
+    },
+    { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+  );
 }
 
 function persistLastLocation(loc) {
@@ -426,10 +472,7 @@ function updateRadiusPresetUI(miles) {
 }
 
 /**
- * Stale-While-Revalidate Telemetry Loader:
- * 1. Immediately renders cached 48-hour forecast if available (zero latency / offline ready).
- * 2. Silently fetches fresh Open-Meteo weather & marine telemetry in the background.
- * 3. Updates cache and refreshes UI seamlessly once fresh data arrives.
+ * Stale-While-Revalidate Telemetry Loader
  */
 async function loadWeatherDataForLocation(loc, saveAsLast = true, options = {}) {
   const { silentBackground = false } = options;
@@ -444,7 +487,6 @@ async function loadWeatherDataForLocation(loc, saveAsLast = true, options = {}) 
     persistLastLocation(loc);
   }
 
-  // Step 1: Check local forecast cache (Stale) for immediate render
   const cachedEntry = getCachedForecast(loc.lat, loc.lng);
   const hasStaleCache = Boolean(cachedEntry && cachedEntry.forecast && cachedEntry.forecast.length > 0);
 
@@ -468,7 +510,6 @@ async function loadWeatherDataForLocation(loc, saveAsLast = true, options = {}) 
     updateMapMarkerAndRadius(true);
   }
 
-  // Step 2: Revalidate silently in the background from Open-Meteo APIs
   isRevalidating = true;
   const requestLocId = loc.id;
 
@@ -541,11 +582,9 @@ async function loadWeatherDataForLocation(loc, saveAsLast = true, options = {}) 
       });
     }
 
-    // Persist fresh forecast into localStorage cache
     saveCachedForecast(loc.lat, loc.lng, hourlyForecast);
     lastRevalidationAt = Date.now();
 
-    // Only apply to UI if the user hasn't switched to a different location mid-flight
     if (currentLoc && currentLoc.id === requestLocId) {
       const preservedHourIdx = silentBackground
         ? Math.min(currentHourIdx, hourlyForecast.length - 1)
@@ -638,7 +677,7 @@ function setupUniversalSearch() {
         category: region || 'Geocoded Location',
         lat: lat,
         lng: lng,
-        description: `Custom searched location in ${region}.`,
+        description: `Searched location in ${region}.`,
         isMapPin: false,
         forecast: []
       };
@@ -823,6 +862,11 @@ function setupEventListeners() {
       }
     });
   });
+
+  const centerLocBtn = document.getElementById('centerCurrentLocBtn');
+  if (centerLocBtn) {
+    centerLocBtn.addEventListener('click', centerOnCurrentUserLocation);
+  }
 
   document.getElementById('globalHelpBtn').addEventListener('click', () => {
     openInfoModal(INFO_CONTENT.globalGuide.title, INFO_CONTENT.globalGuide.html);

@@ -16,7 +16,7 @@
   <header class="app-header">
     <div class="brand-container">
       <h1 class="logo-text">Atmos<span>Photic</span></h1>
-      <span class="badge-tag">PWA v0.4.5</span>
+      <span class="badge-tag">Alpha v0.4.6</span>
     </div>
     
     <!-- Search Bar + Second Row Action Bar (Streamlined/Verbose + Favorite + Info) -->
@@ -60,7 +60,7 @@
       <div class="coords-box" id="locCoords">--</div>
     </section>
 
-    <!-- Map View Section with Interactive Microclimate Radius Presets -->
+    <!-- Map View Section with Interactive Microclimate Radius Presets & Current Location Center Button -->
     <section class="map-section card">
       <div class="section-title-wrap flex-between map-header-bar">
         <div>
@@ -71,12 +71,22 @@
           <span class="subtext">Tap anywhere on map · Zone: <strong id="activeRadiusLabel" class="accent-teal-text">5 mi</strong> (<span id="activeAreaLabel">~78.5 sq mi</span>)</span>
         </div>
 
-        <!-- Quick-Tap Distance Preset Buttons -->
+        <!-- Quick-Tap Distance Preset Buttons + Locate Current Position Icon -->
         <div class="radius-preset-group" role="group" aria-label="Monitoring Radius Presets">
           <span class="radius-prefix-label">Radius:</span>
           <button class="radius-btn" data-radius-miles="1">1 mi</button>
           <button class="radius-btn active" data-radius-miles="5">5 mi</button>
           <button class="radius-btn" data-radius-miles="10">10 mi</button>
+          <button id="centerCurrentLocBtn" class="map-locate-btn" title="Center map on current user location" aria-label="Center map on current user location">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="3"></circle>
+              <circle cx="12" cy="12" r="8"></circle>
+              <line x1="12" y1="2" x2="12" y2="4"></line>
+              <line x1="12" y1="20" x2="12" y2="22"></line>
+              <line x1="2" y1="12" x2="4" y2="12"></line>
+              <line x1="20" y1="12" x2="22" y2="12"></line>
+            </svg>
+          </button>
         </div>
       </div>
       <div id="map" class="map-viewport"></div>
@@ -170,7 +180,7 @@
   </div>
 
   <footer class="app-footer">
-    <p>AtmosPhotic &copy; 2026 · Powered by Open-Meteo & NOAA APIs</p>
+    <p>AtmosPhotic Alpha &copy; 2026 · Powered by Open-Meteo & NOAA APIs</p>
   </footer>
 
   <!-- Leaflet JS -->

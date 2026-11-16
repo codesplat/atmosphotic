@@ -1,4 +1,4 @@
-const CACHE_NAME = 'atmosphotic-v4.5';
+const CACHE_NAME = 'atmosphotic-alpha-v4.6';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -29,7 +29,6 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Stale-While-Revalidate for app shell assets; pass-through for live Open-Meteo API calls
 self.addEventListener('fetch', (event) => {
   const requestUrl = new URL(event.request.url);
 
