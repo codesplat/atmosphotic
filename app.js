@@ -1,9 +1,8 @@
 /**
- * AtmosPhotic PWA Core Engine (Alpha v0.4.6)
- * - Updated header & footer branding to Alpha release designation
- * - Added center-on-current-user-location action button on Spatial View map card
- * - Changed searched location description from "Custom searched location..." to "Searched location..."
- * - Preserved Stale-While-Revalidate (SWR) forecast caching and "Current" timeline labeling
+ * AtmosPhotic PWA Core Engine (Alpha v0.4.8)
+ * - Uses standard native browser scrolling in the Phenomena Predictions pane
+ *   for maximum cross-platform and cross-device compatibility.
+ * - Preserved Concise/Verbose mode, sticky 48h horizon slider, SWR cache, and GPS locate button.
  */
 
 const FREMONT_FALLBACK_LOC = {
@@ -35,6 +34,7 @@ let lastRevalidationAt = 0;
 let favorites = JSON.parse(localStorage.getItem('atmosphotic_favorites') || '[]');
 let infoMode = localStorage.getItem('atmosphotic_info_mode') || 'streamlined';
 let monitoringRadiusMiles = parseFloat(localStorage.getItem('atmosphotic_radius_miles')) || 5;
+let independentPhenomenaScroll = localStorage.getItem('atmosphotic_phenomena_scroll') !== 'false';
 
 const INFO_CONTENT = {
   globalGuide: {
@@ -43,10 +43,13 @@ const INFO_CONTENT = {
       <h4>1. Startup Location & Offline Resilience (Stale-While-Revalidate)</h4>
       <p>AtmosPhotic automatically loads your <strong>last selected location</strong>. Cached 48-hour forecast telemetry renders immediately on cold startup or offline, while fresh Open-Meteo data is silently fetched in the background whenever the app launches or returns to the foreground.</p>
 
-      <h4>2. Information Modes (Streamlined vs. Verbose)</h4>
-      <p>Use the <strong>Streamlined / Verbose</strong> toggle in the header action bar to switch between a compact dashboard and an expanded educational view. Even in Streamlined mode, tap any <strong>ℹ️</strong> icon to inspect details for that single item.</p>
+      <h4>2. Information Modes (Concise vs. Verbose)</h4>
+      <p>Use the <strong>Concise / Verbose</strong> toggle in the header action bar to switch between a compact dashboard and an expanded educational view. Even in Concise mode, tap any <strong>ℹ️</strong> icon to inspect details for that single item.</p>
 
-      <h4>3. Searching, Tapping the Map & Microclimate Radius</h4>
+      <h4>3. Independent Phenomena Scroll & Sticky 48-Hour Slider</h4>
+      <p>The <strong>48-Hour Prediction Horizon</strong> slider stays pinned above <strong>Phenomena Predictions</strong>, which scrolls inside its own scrollable pane (<strong>⇅ Scroll Pane</strong>). Scroll down to any specific condition—such as <em>Valley Fog</em> or <em>Milky Way Clarity</em>—and drag the time slider to watch that score evolve hour by hour without losing your place.</p>
+
+      <h4>4. Searching, Tapping the Map & Microclimate Radius</h4>
       <ul>
         <li><strong>Global Text Search:</strong> Type any city, region, or major landmark into the search bar to fetch coordinates via the Open-Meteo Geocoding API.</li>
         <li><strong>Center on User Location:</strong> Tap the crosshair/locate icon next to the radius presets on the map card to re-center on your current GPS position.</li>
@@ -54,7 +57,7 @@ const INFO_CONTENT = {
         <li><strong>Spatial Radius Overlay:</strong> Use the <strong>1 mi</strong>, <strong>5 mi</strong>, and <strong>10 mi</strong> preset buttons above the map to visualize the spatial footprint of your microclimate monitoring zone.</li>
       </ul>
 
-      <h4>4. Custom Favorite Titles</h4>
+      <h4>5. Custom Favorite Titles</h4>
       <p>Tap the heart icon (<strong>❤️</strong>) to save the active spot and assign a custom title (such as <em>"North Overlook"</em>) so custom map pins are easy to find later. Selecting any favorite automatically scrolls back to the top to display the spot and map.</p>
     `
   },
@@ -80,11 +83,11 @@ const INFO_CONTENT = {
     title: '48-Hour Prediction Horizon',
     html: `
       <p>In meteorology, a <strong>Prediction Horizon</strong> defines the forward-looking temporal window being analyzed.</p>
-      <p>The slider starts at <strong>Current</strong> (aligned to the current local hour) and spans 48 rolling hours. Drag the slider through <strong>+12h</strong>, <strong>+24h</strong>, <strong>+36h</strong>, and <strong>+48h</strong> to inspect how cloud layers, wind speeds, humidity, and ocean swells evolve hour by hour.</p>
+      <p>The slider stays pinned right above the scrollable <strong>Phenomena Predictions</strong> pane so you can scroll to any phenomenon card and drag from <strong>Current</strong> through <strong>+48h</strong> while keeping that exact card in view.</p>
     `
   },
   phenomenaOverview: {
-    title: 'Grouped Phenomena Predictions',
+    title: 'Grouped Phenomena Predictions (Scroll Pane)',
     html: `
       <p>AtmosPhotic evaluates live atmospheric and marine variables for the selected hour and computes a normalized <strong>0%–100% opportunity score</strong> for 9 photography conditions, organized into three categories:</p>
       <ul>
@@ -92,6 +95,7 @@ const INFO_CONTENT = {
         <li><strong>Atmospheric Mist & Fog:</strong> Coastal/Low Mist and Valley Fog.</li>
         <li><strong>Night Sky & Storm Dynamics:</strong> Milky Way Clarity, Storm Light, and Dramatic Post-Storm Light.</li>
       </ul>
+      <p>Use the <strong>⇅ Scroll Pane</strong> button in the card header to switch between an independent fixed-height scroll container (ideal for scrubbing the 48h slider) and full-height page flow.</p>
     `
   },
   metricsOverview: {
@@ -165,6 +169,7 @@ const METRIC_DEFINITIONS = {
 
 document.addEventListener('DOMContentLoaded', () => {
   applyInfoMode(infoMode);
+  applyPhenomenaScrollMode(independentPhenomenaScroll);
   updateRadiusPresetUI(monitoringRadiusMiles);
   setupUniversalSearch();
   setupFavorites();
@@ -173,6 +178,33 @@ document.addEventListener('DOMContentLoaded', () => {
   resolveInitialLocation();
   registerServiceWorker();
 });
+
+/**
+ * Toggle Independent Scroll Viewport for Phenomena Predictions
+ */
+function applyPhenomenaScrollMode(enabled) {
+  independentPhenomenaScroll = Boolean(enabled);
+  localStorage.setItem('atmosphotic_phenomena_scroll', String(independentPhenomenaScroll));
+
+  const shell = document.getElementById('phenomenaScrollShell');
+  const workspace = document.getElementById('predictionFocusWorkspace');
+  const toggleBtn = document.getElementById('togglePhenomenaScrollBtn');
+  const toggleLabel = document.getElementById('togglePhenomenaScrollLabel');
+
+  if (shell) {
+    shell.classList.toggle('independent-scroll-active', independentPhenomenaScroll);
+  }
+  if (workspace) {
+    workspace.classList.toggle('sticky-horizon-active', independentPhenomenaScroll);
+  }
+  if (toggleBtn) {
+    toggleBtn.classList.toggle('active', independentPhenomenaScroll);
+    toggleBtn.setAttribute('aria-pressed', String(independentPhenomenaScroll));
+  }
+  if (toggleLabel) {
+    toggleLabel.textContent = independentPhenomenaScroll ? 'Scroll Pane' : 'Full List';
+  }
+}
 
 /**
  * Stale-While-Revalidate Cache Helpers
@@ -377,10 +409,10 @@ function applyInfoMode(mode) {
   document.body.classList.remove('streamlined-mode', 'verbose-mode');
   document.body.classList.add(`${infoMode}-mode`);
 
-  const streamlinedBtn = document.getElementById('modeStreamlinedBtn');
+  const conciseBtn = document.getElementById('modeStreamlinedBtn');
   const verboseBtn = document.getElementById('modeVerboseBtn');
-  if (streamlinedBtn && verboseBtn) {
-    streamlinedBtn.classList.toggle('active', infoMode === 'streamlined');
+  if (conciseBtn && verboseBtn) {
+    conciseBtn.classList.toggle('active', infoMode === 'streamlined');
     verboseBtn.classList.toggle('active', infoMode === 'verbose');
   }
 }
@@ -853,6 +885,13 @@ function setupEventListeners() {
 
   document.getElementById('modeStreamlinedBtn').addEventListener('click', () => applyInfoMode('streamlined'));
   document.getElementById('modeVerboseBtn').addEventListener('click', () => applyInfoMode('verbose'));
+
+  const toggleScrollBtn = document.getElementById('togglePhenomenaScrollBtn');
+  if (toggleScrollBtn) {
+    toggleScrollBtn.addEventListener('click', () => {
+      applyPhenomenaScrollMode(!independentPhenomenaScroll);
+    });
+  }
 
   document.querySelectorAll('.radius-btn').forEach(btn => {
     btn.addEventListener('click', () => {

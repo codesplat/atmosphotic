@@ -2,12 +2,11 @@
 
 ## Rolling Changelog
 
-### Alpha v0.4.6 - November 16, 2026
-- **Alpha Release Designation**: Updated header badge (`Alpha v0.4.6`), footer, and guide titles to reflect the AtmosPhotic Alpha build.
-- **Center Map on Current User Location**: Added a GPS crosshair action button on the Spatial View map card (`#centerCurrentLocBtn`) to re-center the map and load live atmospheric/marine telemetry for the user's current position.
-- **Location Card Description Refinement**: Updated searched location descriptions from `"Custom searched location in ..."` to `"Searched location in ..."`.
-- **Service Worker Cache Bump**: Updated `sw.js` cache key to `atmosphotic-alpha-v4.6`.
+### Alpha v0.4.8 - November 19, 2026
+- **Cross-Platform Native Scrollbar (Option A)**: Removed custom overlay scroll indicators and scrollbar suppression in favor of standard native scrolling (`overflow-y: auto`) with `scrollbar-width` and `::-webkit-scrollbar` styling for broad cross-device compatibility.
+- **Generic Cross-Platform CSS**: Replaced dynamic viewport `dvh` units and `backdrop-filter` rules on sticky/modal elements with standard `vh` units and solid surfaces.
+- **Service Worker Cache Bump**: Updated `sw.js` cache key to `atmosphotic-alpha-v4.8`.
 
-### v0.4.5 - November 15, 2026
-- **Timeline Label Clarity**: Updated the 48-Hour Prediction Horizon start tick from `"Now"` to `"Current"`.
-- **Stale-While-Revalidate (SWR) Forecast Caching**: Instant cached forecast startup with silent background revalidation.
+### Alpha v0.4.7 - November 19, 2026
+- **Concise Mode Label**: Renamed `"Streamlined"` toggle button to `"Concise"`.
+- **Independent Phenomena Predictions Scroll Pane + Sticky 48h Slider**: Added `#phenomenaScrollViewport` and `⇅ Scroll Pane / Full List` toggle.

@@ -16,10 +16,10 @@
   <header class="app-header">
     <div class="brand-container">
       <h1 class="logo-text">Atmos<span>Photic</span></h1>
-      <span class="badge-tag">Alpha v0.4.6</span>
+      <span class="badge-tag">Alpha v0.4.8</span>
     </div>
     
-    <!-- Search Bar + Second Row Action Bar (Streamlined/Verbose + Favorite + Info) -->
+    <!-- Search Bar + Second Row Action Bar (Concise/Verbose + Favorite + Info) -->
     <div class="header-controls">
       <div class="search-container">
         <div class="search-input-wrap">
@@ -28,10 +28,10 @@
         <div id="searchResultsDropdown" class="search-dropdown hidden"></div>
       </div>
 
-      <!-- Action Row: Streamlined/Verbose on the exact same line as Favorite & Info -->
+      <!-- Action Row: Concise/Verbose on the exact same line as Favorite & Info -->
       <div class="header-action-row">
         <div class="mode-toggle-group" role="group" aria-label="Information Density Mode">
-          <button id="modeStreamlinedBtn" class="mode-btn active" title="Clean, compact view">Streamlined</button>
+          <button id="modeStreamlinedBtn" class="mode-btn active" title="Clean, compact view">Concise</button>
           <button id="modeVerboseBtn" class="mode-btn" title="Detailed descriptions & weights">Verbose</button>
         </div>
 
@@ -92,36 +92,45 @@
       <div id="map" class="map-viewport"></div>
     </section>
 
-    <!-- Interactive Horizon & Time Controls -->
-    <section class="timeline-section card">
-      <div class="timeline-header">
-        <div class="title-row">
-          <h4>48-Hour Prediction Horizon</h4>
-          <button class="info-icon-btn" data-info-key="predictionHorizon" title="About the 48-Hour Prediction Horizon">ℹ️</button>
+    <!-- Sticky Interactive Horizon & Time Controls + Independent Phenomena Scroll Workspace -->
+    <div id="predictionFocusWorkspace" class="prediction-focus-workspace">
+      <section class="timeline-section card sticky-horizon-card">
+        <div class="timeline-header">
+          <div class="title-row">
+            <h4>48-Hour Prediction Horizon</h4>
+            <button class="info-icon-btn" data-info-key="predictionHorizon" title="About the 48-Hour Prediction Horizon">ℹ️</button>
+          </div>
+          <div id="activeTimeLabel" class="time-readout">--</div>
         </div>
-        <div id="activeTimeLabel" class="time-readout">--</div>
-      </div>
-      <input type="range" id="timeSlider" min="0" max="47" value="0" class="time-slider">
-      <div class="timeline-ticks">
-        <span>Current</span>
-        <span>+12h</span>
-        <span>+24h</span>
-        <span>+36h</span>
-        <span>+48h</span>
-      </div>
-    </section>
+        <input type="range" id="timeSlider" min="0" max="47" value="0" class="time-slider">
+        <div class="timeline-ticks">
+          <span>Current</span>
+          <span>+12h</span>
+          <span>+24h</span>
+          <span>+36h</span>
+          <span>+48h</span>
+        </div>
+      </section>
 
-    <!-- Condition Scoring Focus Grid (Grouped by Type) -->
-    <section class="scoring-section">
-      <div class="section-title-wrap compact-section-head">
-        <div class="title-row">
-          <h3>Phenomena Predictions</h3>
-          <button class="info-icon-btn" data-info-key="phenomenaOverview" title="How phenomena scores are calculated">ℹ️</button>
-          <span class="subtext inline-subtext">· Grouped by type</span>
+      <!-- Condition Scoring Focus Grid (Standard Native Scroll Pane) -->
+      <section class="scoring-section card">
+        <div class="section-title-wrap flex-between compact-section-head">
+          <div class="title-row">
+            <h3>Phenomena Predictions</h3>
+            <button class="info-icon-btn" data-info-key="phenomenaOverview" title="How phenomena scores are calculated">ℹ️</button>
+          </div>
+          <button id="togglePhenomenaScrollBtn" class="scroll-mode-toggle-btn active" title="Toggle independent scrolling pane so you can scrub the 48h slider while watching a specific prediction" aria-pressed="true">
+            <span class="scroll-toggle-icon">⇅</span> <span id="togglePhenomenaScrollLabel">Scroll Pane</span>
+          </button>
         </div>
-      </div>
-      <div id="phenomenaGroupsContainer" class="phenomena-groups-container"></div>
-    </section>
+
+        <div id="phenomenaScrollShell" class="phenomena-scroll-shell independent-scroll-active">
+          <div id="phenomenaScrollViewport" class="phenomena-scroll-viewport">
+            <div id="phenomenaGroupsContainer" class="phenomena-groups-container"></div>
+          </div>
+        </div>
+      </section>
+    </div>
 
     <!-- Atmospheric Parameters Detail Breakdown -->
     <section class="details-section card">
