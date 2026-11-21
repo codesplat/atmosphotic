@@ -1,8 +1,18 @@
 /**
- * AtmosPhotic PWA Core Engine (Alpha v0.4.8)
- * - Uses standard native browser scrolling in the Phenomena Predictions pane
- *   for maximum cross-platform and cross-device compatibility.
- * - Preserved Concise/Verbose mode, sticky 48h horizon slider, SWR cache, and GPS locate button.
+ * AtmosPhotic PWA Core Engine (Alpha v0.5.1)
+ * - Solar position & sunrise/sunset time-of-day awareness from Open-Meteo daily
+ *   sunrise/sunset + solar elevation angle so dawn/dusk/night/day signals align
+ *   with actual time of day.
+ * - Four groups: Golden & Twilight Light, Mist & Fog, Night Sky, Storm Dynamics.
+ * - Distinct morning/evening sunrise & sunset cards + time-agnostic Burn Potential
+ *   cloud-layer index for future evaluation/consolidation.
+ * - Replaced Anticrepuscular Rays with Crepuscular Rays (sunbeams fanning
+ *   through cloud breaks or gaps toward/from a low sun).
+ * - Time-aware "Water Reflections" card (Option 2) adapting across daytime,
+ *   twilight, and night calm-water conditions.
+ * - Hour-over-hour trend indicators (↑ / ↓ / → / —) comparing against prior hour.
+ * - Sky/weather observation tips tailored to casual observers, artists, and creators.
+ * - Preserved standard cross-platform native scrolling.
  */
 
 const FREMONT_FALLBACK_LOC = {
@@ -17,7 +27,7 @@ const FREMONT_FALLBACK_LOC = {
 };
 
 const MILES_TO_METERS = 1609.344;
-const FORECAST_CACHE_KEY = 'atmosphotic_forecast_cache_v1';
+const FORECAST_CACHE_KEY = 'atmosphotic_forecast_cache_v2';
 const MAX_CACHED_LOCATIONS = 20;
 
 let currentLoc = null;
@@ -43,11 +53,11 @@ const INFO_CONTENT = {
       <h4>1. Startup Location & Offline Resilience (Stale-While-Revalidate)</h4>
       <p>AtmosPhotic automatically loads your <strong>last selected location</strong>. Cached 48-hour forecast telemetry renders immediately on cold startup or offline, while fresh Open-Meteo data is silently fetched in the background whenever the app launches or returns to the foreground.</p>
 
-      <h4>2. Information Modes (Concise vs. Verbose)</h4>
-      <p>Use the <strong>Concise / Verbose</strong> toggle in the header action bar to switch between a compact dashboard and an expanded educational view. Even in Concise mode, tap any <strong>ℹ️</strong> icon to inspect details for that single item.</p>
+      <h4>2. Solar Time-of-Day Awareness & Hour-Over-Hour Trends</h4>
+      <p>Each hour is evaluated against local sunrise, sunset, and solar elevation angle so twilight and night-sky conditions don't fire at inappropriate times of day. Badges also show hour-over-hour movement (<strong>↑</strong> rising, <strong>↓</strong> falling, <strong>→</strong> steady) compared to the previous hour.</p>
 
-      <h4>3. Independent Phenomena Scroll & Sticky 48-Hour Slider</h4>
-      <p>The <strong>48-Hour Prediction Horizon</strong> slider stays pinned above <strong>Phenomena Predictions</strong>, which scrolls inside its own scrollable pane (<strong>⇅ Scroll Pane</strong>). Scroll down to any specific condition—such as <em>Valley Fog</em> or <em>Milky Way Clarity</em>—and drag the time slider to watch that score evolve hour by hour without losing your place.</p>
+      <h4>3. Information Modes (Concise vs. Verbose) & Observation Tips</h4>
+      <p>Switch between <strong>Concise</strong> and <strong>Verbose</strong> in the header, or tap any <strong>ℹ️</strong> icon to inspect the sky/weather mechanics and observation tips—focused on where to look and how atmospheric layers interact rather than camera settings.</p>
 
       <h4>4. Searching, Tapping the Map & Microclimate Radius</h4>
       <ul>
@@ -58,13 +68,13 @@ const INFO_CONTENT = {
       </ul>
 
       <h4>5. Custom Favorite Titles</h4>
-      <p>Tap the heart icon (<strong>❤️</strong>) to save the active spot and assign a custom title (such as <em>"North Overlook"</em>) so custom map pins are easy to find later. Selecting any favorite automatically scrolls back to the top to display the spot and map.</p>
+      <p>Tap the heart icon (<strong>❤️</strong>) to save the active spot and assign a custom title (such as <em>"North Overlook"</em>) so custom map pins are easy to find later.</p>
     `
   },
   locationBanner: {
     title: 'Active Monitoring Location',
     html: `
-      <p>Displays the currently selected photography spot, regional classification, and exact GPS coordinates.</p>
+      <p>Displays the currently selected spot, regional classification, and exact GPS coordinates.</p>
       <p>On startup, AtmosPhotic restores your previously selected spot with cached forecast telemetry immediately, detects your current GPS location, or defaults to <strong>Fremont, CA</strong>.</p>
     `
   },
@@ -80,36 +90,42 @@ const INFO_CONTENT = {
     `
   },
   predictionHorizon: {
-    title: '48-Hour Prediction Horizon',
+    title: '48-Hour Prediction Horizon & Solar Phase',
     html: `
-      <p>In meteorology, a <strong>Prediction Horizon</strong> defines the forward-looking temporal window being analyzed.</p>
-      <p>The slider stays pinned right above the scrollable <strong>Phenomena Predictions</strong> pane so you can scroll to any phenomenon card and drag from <strong>Current</strong> through <strong>+48h</strong> while keeping that exact card in view.</p>
+      <p>Drag across the 48-hour slider to watch sky conditions and solar lighting shift hour by hour. The phase badge reflects the approximate solar state for that hour:</p>
+      <ul>
+        <li><strong>Dawn / Dusk Window:</strong> Within roughly ±45 minutes of sunrise or sunset.</li>
+        <li><strong>Twilight (Blue Hour / Deep):</strong> Sun just below the horizon (civil/nautical twilight) when soft sky color or early/late lights appear.</li>
+        <li><strong>Daytime:</strong> Sun above the horizon during broader daylight hours.</li>
+        <li><strong>Night:</strong> Sun well below the horizon after evening twilight ends until morning twilight begins.</li>
+      </ul>
     `
   },
   phenomenaOverview: {
-    title: 'Grouped Phenomena Predictions (Scroll Pane)',
+    title: 'Grouped Phenomena Predictions & Trend Arrows',
     html: `
-      <p>AtmosPhotic evaluates live atmospheric and marine variables for the selected hour and computes a normalized <strong>0%–100% opportunity score</strong> for 9 photography conditions, organized into three categories:</p>
+      <p>AtmosPhotic scores sky and weather conditions from <strong>0% to 100%</strong> across four groups:</p>
       <ul>
-        <li><strong>Golden & Twilight Light:</strong> Sunrise Color, Sunset Burn, Burn Potential, and Blue Hour Reflections.</li>
-        <li><strong>Atmospheric Mist & Fog:</strong> Coastal/Low Mist and Valley Fog.</li>
-        <li><strong>Night Sky & Storm Dynamics:</strong> Milky Way Clarity, Storm Light, and Dramatic Post-Storm Light.</li>
+        <li><strong>Golden & Twilight Light:</strong> Sunrise/Sunset Color & Burn windows, Burn Potential (mid/high cloud canvas readiness), Dawn/Dusk Blue Hour, Earth's Shadow & Belt of Venus, Crepuscular Rays, and time-aware Water Reflections.</li>
+        <li><strong>Mist & Fog:</strong> Fog & Low Mist and Valley Fog.</li>
+        <li><strong>Night Sky:</strong> Milky Way Clarity during dark hours.</li>
+        <li><strong>Storm Dynamics:</strong> Storm Light and Dramatic Storms / Golden Hour Light.</li>
       </ul>
-      <p>Use the <strong>⇅ Scroll Pane</strong> button in the card header to switch between an independent fixed-height scroll container (ideal for scrubbing the 48h slider) and full-height page flow.</p>
+      <p>Trend badges compare the selected hour against the previous hour: <strong>↑</strong> (+5 pts or more), <strong>↓</strong> (−5 pts or more), and <strong>→</strong> (steady within ±4 pts).</p>
     `
   },
   metricsOverview: {
     title: 'Atmospheric & Ocean Metrics Feed',
     html: `
-      <p>Raw hourly telemetry streamed asynchronously from the <strong>Open-Meteo Weather API</strong> and <strong>Open-Meteo Marine API</strong> for the active pin coordinates.</p>
-      <p>Tap the <strong>ℹ️</strong> icon on any individual metric pill to learn how that variable affects landscape and seascape photography.</p>
+      <p>Hourly telemetry streamed from the <strong>Open-Meteo Weather API</strong> and <strong>Open-Meteo Marine API</strong> for the active pin coordinates.</p>
+      <p>Tap the <strong>ℹ️</strong> icon on any individual metric pill to see how that variable influences visible sky and water phenomena.</p>
     `
   },
   favoritesSection: {
     title: 'Saved Favorite Locations',
     html: `
       <p>Locations bookmarked with the heart (<strong>❤️</strong>) button are saved persistently in your browser's local storage.</p>
-      <p>Tap any saved favorite to load its forecast and scroll smoothly to the top of the page to view the active banner and map. You can rename or remove saved locations anytime.</p>
+      <p>Tap any saved favorite to load its forecast and scroll smoothly to the top of the page. You can rename or remove saved locations anytime.</p>
     `
   }
 };
@@ -117,53 +133,53 @@ const INFO_CONTENT = {
 const METRIC_DEFINITIONS = {
   cloudHigh: {
     title: 'High Cloud Cover (%)',
-    desc: 'Cirrus and cirrostratus clouds above 20,000 ft. Ideal (30%–70%) for catching vibrant red/orange light during sunrise and sunset burns.',
-    ideal: 'Sunrise/Sunset: 30%–70% | Milky Way: < 10%'
+    desc: 'High-altitude cirrus and cirrostratus clouds. Thin, wispy high clouds catch low-angle dawn and dusk sunlight without blocking the sun itself.',
+    ideal: 'Sunrise/Sunset Color & Burn: 25%–75% | Night Sky: < 10%'
   },
   cloudMid: {
     title: 'Mid Cloud Cover (%)',
-    desc: 'Altocumulus and altostratus clouds (6,500–20,000 ft). Adds dramatic texture during golden hour and storm light if the western/eastern horizon remains open.',
-    ideal: 'Dramatic Light: 25%–60% | Milky Way: < 10%'
+    desc: 'Mid-level altocumulus and altostratus layers. Add texture and dramatic contrast when breaks allow angled light through.',
+    ideal: 'Dramatic Light & Burn Setup: 20%–65% | Night Sky: < 10%'
   },
   cloudLow: {
     title: 'Low Cloud Cover (%)',
-    desc: 'Stratus and cumulus clouds below 6,500 ft. Dense low clouds often block low-angle horizon sunlight, muting sunrise and sunset colors.',
-    ideal: 'Sunset/Sunrise & Astro: < 15%'
+    desc: 'Low stratus or cumulus clouds near the horizon or surface. Heavy low clouds often block low-angle horizon light or obscure stars.',
+    ideal: 'Open Horizon / Clear Night: < 20%'
   },
   windSpeed: {
     title: 'Wind Speed (10m)',
-    desc: 'Sustained surface wind speed. Calm winds (< 4 mph) are essential for mirror-like water reflections during blue hour and keep mist/fog intact.',
-    ideal: 'Reflections & Fog: < 4 mph'
+    desc: 'Surface wind speed. Calm air keeps water surfaces smooth for reflections and helps ground mist or valley fog stay intact.',
+    ideal: 'Water Reflections & Fog: < 4 mph'
   },
   windGusts: {
     title: 'Wind Gusts',
-    desc: 'Peak short-duration wind bursts. High gusts cause tripod vibration during long exposures and signal active frontal boundaries for storm photography.',
-    ideal: 'Long Exposures: < 8 mph | Storm Drama: > 12 mph'
+    desc: 'Short-lived wind bursts. Gusty shifts often accompany passing fronts, convective cells, or choppy surface water.',
+    ideal: 'Calm Surfaces: < 7 mph | Active Weather Shift: > 12 mph'
   },
   humidity: {
     title: 'Relative Humidity (%)',
-    desc: 'Percentage of moisture saturation in the air. High humidity (> 85%) promotes coastal mist, valley fog, and rich atmospheric color scattering.',
+    desc: 'How close the air is to moisture saturation. High humidity supports mist, fog formation, and rich atmospheric scattering.',
     ideal: 'Fog & Mist: ≥ 88%'
   },
   dewPointDepression: {
     title: 'Dew Point Spread (°C)',
-    desc: 'The difference between air temperature and dew point. When this spread drops below 2.0°C, water vapor condenses into visible fog or low mist.',
-    ideal: 'Fog Formation: < 1.5°C – 2.0°C'
+    desc: 'Difference between air temperature and dew point. A narrow spread means the air is near saturation and fog or low mist can condense.',
+    ideal: 'Fog & Mist Formation: < 2.0°C'
   },
   visibility: {
     title: 'Atmospheric Visibility (km)',
-    desc: 'Horizontal transparency of the atmosphere. High visibility (> 15 km) produces crisp distant mountain ridges, clean starlight, and vivid post-storm clarity.',
-    ideal: 'Astro & Crisp Vistas: > 15 km'
+    desc: 'How far you can see clearly through the lower atmosphere. Crisp air sharpens distant ridges, twilight bands, and night-sky stars.',
+    ideal: 'Crisp Horizons & Night Sky: > 15 km'
   },
   waveHeight: {
     title: 'Swell / Wave Height (ft)',
-    desc: 'Significant ocean wave height from the Open-Meteo Marine feed. Larger swells create dramatic sea spray and long-exposure motion trails on coastal rocks.',
-    ideal: 'Seascape Drama: 3–8 ft | Calm Bays: < 1.5 ft'
+    desc: 'Open-water wave/swell height from the marine feed. Sheltered harbors, coves, and inland ponds stay much calmer than exposed coastlines.',
+    ideal: 'Sheltered Reflections: low chop | Coastal Drama: 3–8 ft'
   },
   tideLevel: {
     title: 'Estimated Tide Level (ft)',
-    desc: 'Relative tidal stage indicator for coastal planning—useful for timing sea stacks, tide pools, and exposed sandbar reflections.',
-    ideal: 'Depends on coastal foreground geometry'
+    desc: 'Relative coastal tidal height indicator for spotting exposed shorelines, flats, or water edges near marinas and bays.',
+    ideal: 'Varies by shoreline & basin geometry'
   }
 };
 
@@ -272,6 +288,123 @@ function getLocalHourPrefix() {
   const day = String(now.getDate()).padStart(2, '0');
   const hour = String(now.getHours()).padStart(2, '0');
   return `${year}-${month}-${day}T${hour}`;
+}
+
+/**
+ * Solar Position & Time-of-Day Context Helpers
+ */
+function parseLocalIsoMinutes(isoStr) {
+  if (!isoStr || typeof isoStr !== 'string') return null;
+  const parts = isoStr.split('T');
+  if (parts.length < 2) return null;
+  const timeParts = parts[1].split(':');
+  if (timeParts.length < 2) return null;
+  const h = parseInt(timeParts[0], 10);
+  const m = parseInt(timeParts[1], 10);
+  if (isNaN(h) || isNaN(m)) return null;
+  return h * 60 + m;
+}
+
+function getDayOfYear(dateObj) {
+  const start = new Date(dateObj.getFullYear(), 0, 0);
+  const diff = (dateObj - start) + ((start.getTimezoneOffset() - dateObj.getTimezoneOffset()) * 60 * 1000);
+  return Math.floor(diff / 86400000);
+}
+
+/**
+ * Estimates solar elevation in degrees for a given date/time and lat/lng.
+ */
+function computeSolarElevationDeg(dateObj, latDeg, lngDeg) {
+  const dayOfYear = getDayOfYear(dateObj);
+  const declRad = (23.44 * Math.PI / 180) * Math.sin((2 * Math.PI / 365) * (dayOfYear - 81));
+  const latRad = latDeg * Math.PI / 180;
+
+  const localHours = dateObj.getHours() + dateObj.getMinutes() / 60 + dateObj.getSeconds() / 3600;
+  const standardMeridian = Math.round(lngDeg / 15) * 15;
+  const solarTimeOffsetHours = (lngDeg - standardMeridian) * 4 / 60;
+  const solarHour = localHours + solarTimeOffsetHours;
+  const hourAngleRad = ((solarHour - 12) * 15) * Math.PI / 180;
+
+  const sinAlt =
+    Math.sin(latRad) * Math.sin(declRad) +
+    Math.cos(latRad) * Math.cos(declRad) * Math.cos(hourAngleRad);
+
+  return (Math.asin(Math.max(-1, Math.min(1, sinAlt))) * 180) / Math.PI;
+}
+
+/**
+ * Builds rich solar & time-of-day context for an hour entry.
+ */
+function buildSolarContext(timestampStr, lat, lng, dailySunriseMap, dailySunsetMap) {
+  const dateObj = new Date(timestampStr);
+  const dayKey = timestampStr.slice(0, 10);
+  const hourMinutes = dateObj.getHours() * 60 + dateObj.getMinutes();
+
+  let sunriseMin = parseLocalIsoMinutes(dailySunriseMap[dayKey]);
+  let sunsetMin = parseLocalIsoMinutes(dailySunsetMap[dayKey]);
+
+  if (sunriseMin == null) sunriseMin = 6 * 60 + 45;
+  if (sunsetMin == null) sunsetMin = 17 * 60 + 15;
+
+  const minsFromSunrise = hourMinutes - sunriseMin;
+  const minsFromSunset = hourMinutes - sunsetMin;
+  const solarElevationDeg = computeSolarElevationDeg(dateObj, lat, lng);
+
+  const isSunriseWindow = minsFromSunrise >= -55 && minsFromSunrise <= 45;
+  const isSunsetWindow = minsFromSunset >= -45 && minsFromSunset <= 55;
+
+  const isDawnBlueHour =
+    (minsFromSunrise >= -75 && minsFromSunrise < -15) ||
+    (minsFromSunrise < 0 && solarElevationDeg >= -10 && solarElevationDeg < -1.5);
+
+  const isDuskBlueHour =
+    (minsFromSunset > 15 && minsFromSunset <= 75) ||
+    (minsFromSunset > 0 && solarElevationDeg < -1.5 && solarElevationDeg >= -10);
+
+  let phaseLabel = 'Daytime';
+  let phaseTone = 'day';
+
+  if (isSunriseWindow) {
+    phaseLabel = 'Sunrise Window';
+    phaseTone = 'golden';
+  } else if (isSunsetWindow) {
+    phaseLabel = 'Sunset Window';
+    phaseTone = 'golden';
+  } else if (isDawnBlueHour) {
+    phaseLabel = 'Dawn Blue Hour';
+    phaseTone = 'twilight';
+  } else if (isDuskBlueHour) {
+    phaseLabel = 'Dusk Blue Hour';
+    phaseTone = 'twilight';
+  } else if (solarElevationDeg < -12) {
+    phaseLabel = 'Night';
+    phaseTone = 'night';
+  } else if (solarElevationDeg < 0) {
+    phaseLabel = 'Twilight';
+    phaseTone = 'twilight';
+  } else if (solarElevationDeg <= 8) {
+    phaseLabel = 'Low-Angle Daylight';
+    phaseTone = 'golden';
+  }
+
+  const isDaylight = solarElevationDeg > 0;
+  const isNight = solarElevationDeg <= -12;
+  const isTwilightOrHorizon = !isNight && (solarElevationDeg <= 8 || isSunriseWindow || isSunsetWindow);
+
+  return {
+    solarElevationDeg,
+    minsFromSunrise,
+    minsFromSunset,
+    isSunriseWindow,
+    isSunsetWindow,
+    isDawnBlueHour,
+    isDuskBlueHour,
+    isDaylight,
+    isNight,
+    isTwilightOrHorizon,
+    phaseLabel,
+    phaseTone
+  };
 }
 
 /**
@@ -504,7 +637,7 @@ function updateRadiusPresetUI(miles) {
 }
 
 /**
- * Stale-While-Revalidate Telemetry Loader
+ * Stale-While-Revalidate Telemetry Loader (includes daily sunrise/sunset for solar windows)
  */
 async function loadWeatherDataForLocation(loc, saveAsLast = true, options = {}) {
   const { silentBackground = false } = options;
@@ -546,7 +679,7 @@ async function loadWeatherDataForLocation(loc, saveAsLast = true, options = {}) 
   const requestLocId = loc.id;
 
   try {
-    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lng}&hourly=cloudcover_low,cloudcover_mid,cloudcover_high,windspeed_10m,windgusts_10m,relativehumidity_2m,dewpoint_2m,visibility,surface_pressure&timezone=auto`;
+    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lng}&hourly=cloudcover_low,cloudcover_mid,cloudcover_high,windspeed_10m,windgusts_10m,relativehumidity_2m,dewpoint_2m,visibility,surface_pressure&daily=sunrise,sunset&forecast_days=3&timezone=auto`;
     const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${loc.lat}&longitude=${loc.lng}&hourly=wave_height,swell_wave_height,swell_wave_period&timezone=auto`;
 
     const [weatherRes, marineRes] = await Promise.all([
@@ -561,6 +694,19 @@ async function loadWeatherDataForLocation(loc, saveAsLast = true, options = {}) 
     const weatherData = await weatherRes.json();
     const marineData = marineRes && marineRes.ok ? await marineRes.json().catch(() => null) : null;
 
+    const dailySunriseMap = {};
+    const dailySunsetMap = {};
+    if (weatherData.daily && Array.isArray(weatherData.daily.time)) {
+      weatherData.daily.time.forEach((dayStr, i) => {
+        if (weatherData.daily.sunrise && weatherData.daily.sunrise[i]) {
+          dailySunriseMap[dayStr] = weatherData.daily.sunrise[i];
+        }
+        if (weatherData.daily.sunset && weatherData.daily.sunset[i]) {
+          dailySunsetMap[dayStr] = weatherData.daily.sunset[i];
+        }
+      });
+    }
+
     const times = weatherData.hourly.time;
     const localHourString = getLocalHourPrefix();
 
@@ -574,26 +720,28 @@ async function loadWeatherDataForLocation(loc, saveAsLast = true, options = {}) 
     for (let i = 0; i < 48 && (startIndex + i) < times.length; i++) {
       const idx = startIndex + i;
       const timeObj = new Date(times[idx]);
-      
+
       const cloudLow = weatherData.hourly.cloudcover_low[idx] || 0;
       const cloudMid = weatherData.hourly.cloudcover_mid[idx] || 0;
       const cloudHigh = weatherData.hourly.cloudcover_high[idx] || 0;
       const windSpeed = weatherData.hourly.windspeed_10m[idx] || 2;
       const windGust = weatherData.hourly.windgusts_10m[idx] || 3;
       const humidity = weatherData.hourly.relativehumidity_2m[idx] || 60;
-      
+
       const tempC = 15;
       const dewPoint = weatherData.hourly.dewpoint_2m ? weatherData.hourly.dewpoint_2m[idx] : tempC - 3;
       const dewPointDepression = Math.max(0.1, tempC - dewPoint).toFixed(1);
-      
+
       const visibilityKm = (weatherData.hourly.visibility ? weatherData.hourly.visibility[idx] / 1000 : 15);
       const pressure = weatherData.hourly.surface_pressure ? weatherData.hourly.surface_pressure[idx] : 1013;
-      const pressureTrend = idx > 0 ? pressure - weatherData.hourly.surface_pressure[idx-1] : 0;
+      const pressureTrend = idx > 0 ? pressure - weatherData.hourly.surface_pressure[idx - 1] : 0;
 
       const waveHeightFt = marineData && marineData.hourly && marineData.hourly.wave_height && marineData.hourly.wave_height[idx] != null
         ? (marineData.hourly.wave_height[idx] * 3.28084).toFixed(1)
         : '1.2';
       const tideHeightFt = (Math.sin(idx / 3) * 3 + 2.0).toFixed(1);
+
+      const solar = buildSolarContext(times[idx], loc.lat, loc.lng, dailySunriseMap, dailySunsetMap);
 
       hourlyForecast.push({
         timestamp: times[idx],
@@ -610,7 +758,8 @@ async function loadWeatherDataForLocation(loc, saveAsLast = true, options = {}) 
         waveHeightFt,
         tideHeightFt,
         moonPhase: 0.15,
-        pressureTrend
+        pressureTrend,
+        solar
       });
     }
 
@@ -938,19 +1087,21 @@ function setupEventListeners() {
     if (sectionKey && INFO_CONTENT[sectionKey]) {
       openInfoModal(INFO_CONTENT[sectionKey].title, INFO_CONTENT[sectionKey].html);
     } else if (phenomId && currentLoc && currentLoc.forecast && currentLoc.forecast[currentHourIdx]) {
-      const allScores = computeScores(currentLoc.forecast[currentHourIdx]);
+      const hourData = currentLoc.forecast[currentHourIdx];
+      const prevData = currentHourIdx > 0 ? currentLoc.forecast[currentHourIdx - 1] : null;
+      const allScores = computeScoresWithTrends(hourData, prevData);
       const p = allScores.find(item => item.id === phenomId);
       if (p) {
         openInfoModal(
-          `${p.name} (${p.score}%)`,
+          `${p.name} (${p.score}% · ${p.trendLabel})`,
           `
-            <h4>Category</h4>
-            <p>${p.groupTitle}</p>
-            <h4>Photographic Conditions</h4>
+            <h4>Group & Time Context</h4>
+            <p>${p.groupTitle} · Active Phase: <strong>${hourData.solar ? hourData.solar.phaseLabel : 'Current'}</strong></p>
+            <h4>What You Are Observing</h4>
             <p>${p.desc}</p>
-            <h4>Scoring Formula & Weighting</h4>
+            <h4>How This Score Is Calculated</h4>
             <div class="modal-formula-box">${p.formulaSummary}</div>
-            <h4>Field Tip</h4>
+            <h4>Sky & Weather Observation Tip</h4>
             <p>${p.fieldTip}</p>
           `
         );
@@ -962,7 +1113,7 @@ function setupEventListeners() {
         `
           <h4>What It Measures</h4>
           <p>${m.desc}</p>
-          <h4>Ideal Photography Range</h4>
+          <h4>Helpful Range for Sky Watching</h4>
           <div class="modal-formula-box">${m.ideal}</div>
         `
       );
@@ -974,133 +1125,379 @@ function renderApp() {
   if (!currentLoc || !currentLoc.forecast || currentLoc.forecast.length === 0) return;
 
   const hourData = currentLoc.forecast[currentHourIdx];
-  
+  const prevData = currentHourIdx > 0 ? currentLoc.forecast[currentHourIdx - 1] : null;
+
+  if (!hourData.solar) {
+    hourData.solar = buildSolarContext(hourData.timestamp, currentLoc.lat, currentLoc.lng, {}, {});
+  }
+  if (prevData && !prevData.solar) {
+    prevData.solar = buildSolarContext(prevData.timestamp, currentLoc.lat, currentLoc.lng, {}, {});
+  }
+
   document.getElementById('locName').textContent = currentLoc.name;
   document.getElementById('locCategory').textContent = currentLoc.category;
   document.getElementById('locDescription').textContent = currentLoc.description;
   document.getElementById('locCoords').textContent = `${currentLoc.lat.toFixed(4)}°N, ${currentLoc.lng.toFixed(4)}°W`;
-  
+
   document.getElementById('activeTimeLabel').textContent = `${hourData.dateDisplay} @ ${hourData.hourDisplay}`;
 
+  const phaseBadge = document.getElementById('solarPhaseBadge');
+  if (phaseBadge && hourData.solar) {
+    phaseBadge.textContent = hourData.solar.phaseLabel;
+    phaseBadge.className = `solar-phase-badge phase-${hourData.solar.phaseTone}`;
+  }
+
   renderFavoritesUI();
-  renderPhenomenaGroups(hourData);
+  renderPhenomenaGroups(hourData, prevData);
   renderMetricsBreakdown(hourData);
 }
 
-function computeScores(d) {
+/**
+ * Computes phenomenon scores and hour-over-hour trend indicators.
+ */
+function computeScoresForHour(d) {
+  const s = d.solar || buildSolarContext(d.timestamp, currentLoc ? currentLoc.lat : 37.5, currentLoc ? currentLoc.lng : -122, {}, {});
+  const dewSpread = parseFloat(d.dewPointDepression);
+  const openSkyFraction = clamp(100 - (d.cloudLow + d.cloudMid + d.cloudHigh));
+
+  // 1. Sunrise Color
+  const rawSunriseColor = Math.round((d.cloudHigh * 0.6) + (d.cloudMid * 0.3) - (d.cloudLow * 0.85) + (d.visibilityKm > 15 ? 10 : 0));
+  const sunriseColorScore = s.isSunriseWindow
+    ? clamp(rawSunriseColor)
+    : (s.isDawnBlueHour ? clamp(Math.round(rawSunriseColor * 0.45)) : 0);
+
+  // 2. Sunrise Burn
+  const rawSunriseBurn = Math.round((d.cloudHigh * 0.7) + (d.cloudMid * 0.25) - (d.cloudLow * 0.95) + (d.visibilityKm > 12 ? 12 : 0));
+  const sunriseBurnScore = s.isSunriseWindow
+    ? clamp(rawSunriseBurn)
+    : (s.isDawnBlueHour ? clamp(Math.round(rawSunriseBurn * 0.35)) : 0);
+
+  // 3. Sunset Color
+  const rawSunsetColor = Math.round((d.cloudHigh * 0.6) + (d.cloudMid * 0.3) - (d.cloudLow * 0.85) + (d.visibilityKm > 15 ? 10 : 0));
+  const sunsetColorScore = s.isSunsetWindow
+    ? clamp(rawSunsetColor)
+    : (s.isDuskBlueHour ? clamp(Math.round(rawSunsetColor * 0.45)) : 0);
+
+  // 4. Sunset Burn
+  const rawSunsetBurn = Math.round((d.cloudHigh * 0.7) + (d.cloudMid * 0.25) - (d.cloudLow * 0.95) + (d.visibilityKm > 12 ? 12 : 0));
+  const sunsetBurnScore = s.isSunsetWindow
+    ? clamp(rawSunsetBurn)
+    : (s.isDuskBlueHour ? clamp(Math.round(rawSunsetBurn * 0.35)) : 0);
+
+  // 5. Burn Potential (Time-agnostic mid/high cloud layer readiness index)
+  const burnPotentialScore = clamp(Math.round(((d.cloudHigh + d.cloudMid) / 2) * 0.85 - (d.cloudLow * 0.45) + 12));
+
+  // 6. Dawn Blue Hour
+  const dawnBlueScore = s.isDawnBlueHour
+    ? clamp(Math.round((100 - d.cloudLow * 0.7) * 0.6 + (d.visibilityKm > 10 ? 25 : 10) + (d.windSpeed < 10 ? 15 : 0)))
+    : 0;
+
+  // 7. Dusk Blue Hour
+  const duskBlueScore = s.isDuskBlueHour
+    ? clamp(Math.round((100 - d.cloudLow * 0.7) * 0.6 + (d.visibilityKm > 10 ? 25 : 10) + (d.windSpeed < 10 ? 15 : 0)))
+    : 0;
+
+  // 8. Earth's Shadow and Belt of Venus
+  const beltOfVenusScore = s.isTwilightOrHorizon
+    ? clamp(Math.round((100 - d.cloudLow * 0.85) * 0.55 + (d.visibilityKm >= 12 ? 25 : 10) + (d.cloudHigh < 75 ? 15 : 5)))
+    : 0;
+
+  // 9. Crepuscular Rays (Approximate optical setup: broken clouds + low sun / twilight + decent clarity)
+  const brokenCloudFactor = 100 - Math.abs(50 - ((d.cloudMid + d.cloudHigh) / 2)) * 2;
+  const crepuscularScore = s.isTwilightOrHorizon
+    ? clamp(Math.round(brokenCloudFactor * 0.55 + (d.visibilityKm >= 12 ? 25 : 10) + (d.cloudLow < 60 ? 15 : 0)))
+    : 0;
+
+  // 10. Water Reflections (Option 2: Time-aware calm-water reflection opportunity)
+  const calmWindScore = clamp(Math.round(100 - d.windSpeed * 11));
+  let waterReflectionScore = 0;
+  let waterReflectionDesc = '';
+  let waterReflectionTip = '';
+  let waterReflectionFormula = '';
+
+  if (s.isNight) {
+    waterReflectionScore = clamp(Math.round(calmWindScore * 0.8 + (d.visibilityKm >= 8 ? 20 : 8)));
+    waterReflectionDesc = 'Calm water reflecting boat harbors, piers, bridges, and lit cityscapes after dark.';
+    waterReflectionFormula = '80% Calm Wind (<4 mph calmest) + Visibility Clarity (+20%) during Night hours';
+    waterReflectionTip = 'Look along sheltered marinas, canals, or waterfront promenades where shore and boat lights reflect off still water.';
+  } else if (s.isDawnBlueHour || s.isDuskBlueHour || s.isSunriseWindow || s.isSunsetWindow) {
+    const skyColorBoost = clamp(Math.round(d.cloudHigh * 0.25 + (d.cloudLow < 40 ? 15 : 0)));
+    waterReflectionScore = clamp(Math.round(calmWindScore * 0.75 + skyColorBoost));
+    waterReflectionDesc = 'Calm water mirroring twilight sky tones, horizon color, and early or evening shore lights.';
+    waterReflectionFormula = '75% Calm Wind + Twilight Sky/Horizon Boost during Dawn/Dusk & Sunrise/Sunset windows';
+    waterReflectionTip = 'Pick a protected cove, pond, or harbor basin out of the breeze so sky colors and lights stay unbroken.';
+  } else {
+    const dayContrastBoost = clamp(Math.round(Math.min(25, (d.cloudMid + d.cloudHigh) * 0.2)));
+    waterReflectionScore = clamp(Math.round(calmWindScore * 0.75 + dayContrastBoost));
+    waterReflectionDesc = 'Calm water reflecting daytime sky, cloud shapes, boats, or buildings in sheltered spots.';
+    waterReflectionFormula = '75% Calm Wind + Sky/Cloud Contrast Boost during Daytime hours';
+    waterReflectionTip = 'Sheltered slips, river bends, and leeward shorelines hold crisp reflections best when surface breezes stay light.';
+  }
+
+  // 11. Fog & Low Mist
+  const fogScore = clamp(Math.round(
+    (d.humidity >= 90 ? 48 : (d.humidity >= 80 ? 24 : 8)) +
+    (dewSpread < 2.0 ? 38 : (dewSpread < 3.5 ? 18 : 0)) -
+    (d.windSpeed * 5)
+  ));
+
+  // 12. Valley Fog
+  const valleyTimingBonus = (s.isNight || s.isDawnBlueHour || s.isSunriseWindow) ? 10 : -10;
+  const valleyFogScore = clamp(Math.round(
+    (d.humidity >= 88 ? 44 : (d.humidity >= 78 ? 20 : 5)) +
+    (dewSpread < 1.5 ? 42 : (dewSpread < 2.8 ? 18 : 0)) -
+    (d.windSpeed * 6) +
+    valleyTimingBonus
+  ));
+
+  // 13. Milky Way Clarity
+  const milkyWayScore = s.isNight
+    ? clamp(Math.round(openSkyFraction * 0.65 + (d.moonPhase < 0.25 ? 25 : 5) + (d.visibilityKm > 15 ? 10 : 0)))
+    : 0;
+
+  // 14. Storm Light
+  const stormLightScore = clamp(Math.round(
+    (d.cloudMid * 0.45) +
+    (d.cloudLow * 0.2) +
+    (Math.abs(d.pressureTrend) >= 1 ? 20 : (d.pressureTrend !== 0 ? 10 : 0)) +
+    (d.windGust > 8 ? 15 : 0)
+  ));
+
+  // 15. Dramatic Storms / Golden Hour Light
+  const goldenStormWeight = s.isTwilightOrHorizon ? 1.0 : 0.35;
+  const dramaticStormGoldenScore = clamp(Math.round(
+    ((d.cloudMid * 0.45) + (d.pressureTrend > 0 ? 25 : 10) + (d.visibilityKm > 12 ? 20 : 5)) * goldenStormWeight
+  ));
+
   return [
     {
       id: 'sunrise-color',
       group: 'golden-twilight',
       groupTitle: 'Golden & Twilight Light',
       name: 'Sunrise Color',
-      score: clamp(Math.round((d.cloudHigh * 0.6) + (d.cloudMid * 0.3) - (d.cloudLow * 0.8) + (d.visibilityKm > 15 ? 10 : 0))),
-      desc: 'High cirrus clouds catching early dawn light prior to sunrise.',
-      formulaSummary: '60% High Cloud + 30% Mid Cloud − 80% Low Cloud + Visibility Bonus (+10%)',
-      fieldTip: 'Arrive 30–40 minutes before official sunrise; peak color often happens 15 minutes before the sun breaks the horizon.'
+      score: sunriseColorScore,
+      desc: 'Morning dawn light coloring high clouds near sunrise.',
+      formulaSummary: 'Active in Sunrise window (and softly in Dawn Blue Hour): 60% High + 30% Mid − 85% Low Cloud + Clarity Bonus',
+      fieldTip: 'Face toward the eastern sky as dawn approaches; thin high clouds catch warm hues before low clouds build.'
+    },
+    {
+      id: 'sunrise-burn',
+      group: 'golden-twilight',
+      groupTitle: 'Golden & Twilight Light',
+      name: 'Sunrise Burn',
+      score: sunriseBurnScore,
+      desc: 'Bright morning light illuminating high and mid clouds without low-cloud blockage.',
+      formulaSummary: 'Active in Sunrise window: 70% High + 25% Mid − 95% Low Cloud + Visibility Bonus',
+      fieldTip: 'Watch for sudden bursts of orange and gold when the horizon stays open beneath higher cloud layers.'
+    },
+    {
+      id: 'sunset-color',
+      group: 'golden-twilight',
+      groupTitle: 'Golden & Twilight Light',
+      name: 'Sunset Color',
+      score: sunsetColorScore,
+      desc: 'Evening dusk light tinting clouds around sunset.',
+      formulaSummary: 'Active in Sunset window (and softly in Dusk Blue Hour): 60% High + 30% Mid − 85% Low Cloud + Clarity Bonus',
+      fieldTip: 'Look toward the western sky and surrounding clouds as the sun nears the horizon.'
     },
     {
       id: 'sunset-burn',
       group: 'golden-twilight',
       groupTitle: 'Golden & Twilight Light',
       name: 'Sunset Burn',
-      score: clamp(Math.round((d.cloudHigh * 0.65) + (d.cloudMid * 0.25) - (d.cloudLow * 0.9) + 10)),
-      desc: 'Vibrant cloud canvas receiving unblocked horizon illumination.',
-      formulaSummary: '65% High Cloud + 25% Mid Cloud − 90% Low Cloud + Horizon Baseline (+10%)',
-      fieldTip: 'Stay 15–20 minutes after sunset for the "afterglow" when high-altitude clouds ignite in magenta and crimson.'
+      score: sunsetBurnScore,
+      desc: 'Rich evening light igniting high/mid clouds when low clouds do not block the path.',
+      formulaSummary: 'Active in Sunset window: 70% High + 25% Mid − 95% Low Cloud + Visibility Bonus',
+      fieldTip: 'Linger just after sunset—high clouds often glow brightest right after the sun dips below the horizon.'
     },
     {
       id: 'burn-potential',
       group: 'golden-twilight',
       groupTitle: 'Golden & Twilight Light',
-      name: 'Sunset/Sunrise Burn Potential',
-      score: clamp(Math.round(((d.cloudHigh + d.cloudMid) / 2) * 0.8 - (d.cloudLow * 0.5) + 15)),
-      desc: 'General atmospheric setup favorable for dawn or dusk color creation.',
-      formulaSummary: '80% Avg(High + Mid Cloud) − 50% Low Cloud + Baseline (+15%)',
-      fieldTip: 'Works best when a clean gap exists along the western (sunset) or eastern (sunrise) horizon.'
+      name: 'Burn Potential',
+      score: burnPotentialScore,
+      desc: 'Time-agnostic check of mid- and high-level cloud layers that could catch angled light.',
+      formulaSummary: 'All hours: 85% Avg(High + Mid Cloud) − 45% Low Cloud + Baseline (+12%)',
+      fieldTip: 'Use this at any hour as a cloud-layer check to see if the upper sky has structure ready for dawn or dusk.'
     },
     {
-      id: 'blue-hour-reflections',
+      id: 'dawn-blue-hour',
       group: 'golden-twilight',
       groupTitle: 'Golden & Twilight Light',
-      name: 'Blue Hour Reflections',
-      score: clamp(Math.round((100 - d.windSpeed * 10) * 0.5 + (d.humidity > 80 ? 40 : 20) + (d.cloudLow < 15 ? 10 : 0))),
-      desc: 'Deep twilight sky combined with glassy, calm water conditions.',
-      formulaSummary: '50% Wind Calmness + Humidity Bonus (+20% to +40%) + Clear Low Sky (+10%)',
-      fieldTip: 'Use a tripod and a 2–10 second exposure over still ponds, lakes, or sheltered coves to smooth minor ripples.'
+      name: 'Dawn Blue Hour',
+      score: dawnBlueScore,
+      desc: 'Soft pre-sunrise twilight when deep blue sky tones emerge before dawn color.',
+      formulaSummary: 'Active in pre-sunrise twilight: Calm/open sky + clear visibility',
+      fieldTip: 'Step outside before sunrise while the sky still holds a cool, even blue tone before warm horizon light arrives.'
+    },
+    {
+      id: 'dusk-blue-hour',
+      group: 'golden-twilight',
+      groupTitle: 'Golden & Twilight Light',
+      name: 'Dusk Blue Hour',
+      score: duskBlueScore,
+      desc: 'Post-sunset twilight window when rich blue sky balances warm city or harbor lights.',
+      formulaSummary: 'Active in post-sunset twilight: Calm/open sky + clear visibility',
+      fieldTip: 'Watch right after sunset color fades—balanced twilight light makes buildings, bridges, and harbors stand out cleanly.'
+    },
+    {
+      id: 'earths-shadow-belt-of-venus',
+      group: 'golden-twilight',
+      groupTitle: 'Golden & Twilight Light',
+      name: "Earth's Shadow & Belt of Venus",
+      score: beltOfVenusScore,
+      desc: 'Dark blue-grey Earth shadow band and pinkish Belt of Venus glow opposite the low sun.',
+      formulaSummary: 'Active in Twilight / low sun: Open opposite horizon + clean visibility',
+      fieldTip: 'Turn your back to the rising or setting sun and look low across the opposite sky for the pink band above a dark shadow.'
+    },
+    {
+      id: 'crepuscular-rays',
+      group: 'golden-twilight',
+      groupTitle: 'Golden & Twilight Light',
+      name: 'Crepuscular Rays',
+      score: crepuscularScore,
+      desc: 'Approximate check for sunbeams fanning through broken clouds or gaps around a low sun.',
+      formulaSummary: 'Approximate heuristic in low sun/twilight: Broken clouds + clear air',
+      fieldTip: 'Look toward the low sun—or along beams streaming past cloud edges and terrain—when scattered clouds break up direct light.'
+    },
+    {
+      id: 'water-reflections',
+      group: 'golden-twilight',
+      groupTitle: 'Golden & Twilight Light',
+      name: 'Water Reflections',
+      score: waterReflectionScore,
+      desc: waterReflectionDesc,
+      formulaSummary: waterReflectionFormula,
+      fieldTip: waterReflectionTip
     },
     {
       id: 'fog-low-mist',
       group: 'fog-mist',
-      groupTitle: 'Atmospheric Mist & Fog',
+      groupTitle: 'Mist & Fog',
       name: 'Fog & Low Mist',
-      score: clamp(Math.round((d.humidity >= 90 ? 50 : 20) + (parseFloat(d.dewPointDepression) < 2.0 ? 40 : 10) - (d.windSpeed * 5))),
-      desc: 'Atmospheric saturation and near-zero dew point spread with calm winds.',
-      formulaSummary: 'Humidity Saturation (+50% if ≥90%) + Dew Point Spread (+40% if <2.0°C) − Wind Penalty',
-      fieldTip: 'Look for elevated overlooks just above the marine layer to photograph ridges piercing through low fog.'
+      score: fogScore,
+      desc: 'High moisture and tight temperature–dew-point spread creating low mist or fog.',
+      formulaSummary: 'High Humidity + Narrow Dew Point Spread − Wind Dispersion',
+      fieldTip: 'Look across open fields, coastlines, or ridges where cool, moist air lingers with little wind to mix it away.'
     },
     {
       id: 'valley-fog',
       group: 'fog-mist',
-      groupTitle: 'Atmospheric Mist & Fog',
+      groupTitle: 'Mist & Fog',
       name: 'Valley Fog',
-      score: clamp(Math.round((d.humidity > 88 ? 45 : 15) + (parseFloat(d.dewPointDepression) < 1.5 ? 45 : 10) - (d.windSpeed * 6))),
-      desc: 'Ground-hugging temperature inversion mist settling into low elevation valleys.',
-      formulaSummary: 'High Humidity (+45% if >88%) + Tight Dew Point Spread (+45% if <1.5°C) − Wind Penalty',
-      fieldTip: 'Best photographed right after dawn when warm golden sunlight illuminates the top of the valley mist.'
+      score: valleyFogScore,
+      desc: 'Settled mist or fog pooling in low basins and valleys under calm conditions.',
+      formulaSummary: 'High Humidity + Tight Dew Point Spread − Wind + Cool/Dawn Timing',
+      fieldTip: 'Look from higher terrain looking down into low valleys or river basins during calm, humid early hours.'
     },
     {
       id: 'milky-way-clarity',
-      group: 'astro-storms',
-      groupTitle: 'Night Sky & Storm Dynamics',
+      group: 'night-sky',
+      groupTitle: 'Night Sky',
       name: 'Milky Way Clarity',
-      score: clamp(Math.round((100 - (d.cloudLow + d.cloudMid + d.cloudHigh)) * 0.6 + (d.moonPhase < 0.25 ? 30 : 0) + (d.visibilityKm > 15 ? 10 : 0))),
-      desc: 'Dark sky conditions with low cloud cover and low lunar illumination.',
-      formulaSummary: '60% Clear Sky Fraction + Dark Moon Bonus (+30%) + High Visibility (+10%)',
-      fieldTip: 'Follow the 500-rule or NPF rule for shutter speed to keep stars sharp without trailing.'
+      score: milkyWayScore,
+      desc: 'Dark-sky star and Milky Way visibility when night is dark and skies are clear.',
+      formulaSummary: 'Active at Night: 65% Clear Sky + Dark Moon + Visibility Bonus',
+      fieldTip: 'Give your eyes 15–20 minutes away from bright screens or lights after dark to spot faint star bands and dust lanes.'
     },
     {
       id: 'storm-light',
-      group: 'astro-storms',
-      groupTitle: 'Night Sky & Storm Dynamics',
+      group: 'storm-dynamics',
+      groupTitle: 'Storm Dynamics',
       name: 'Storm Light',
-      score: clamp(Math.round((d.cloudMid * 0.5) + (d.pressureTrend !== 0 ? 30 : 10) + (d.windGust > 6 ? 20 : 0))),
-      desc: 'High atmospheric contrast, thick cloud dynamics, and post-rain clarity.',
-      formulaSummary: '50% Mid-Level Cloud + Active Barometric Shift (+30%) + Gust Dynamics (+20%)',
-      fieldTip: 'Position yourself with dark storm clouds as a backdrop while breaks in the clouds spotlight foreground subjects.'
+      score: stormLightScore,
+      desc: 'Moody, high-contrast sky light driven by layered clouds, gusts, or pressure shifts.',
+      formulaSummary: 'Mid/Low Cloud Structure + Barometric Shift + Gust Activity',
+      fieldTip: 'Watch how dark cloud bases contrast against brighter breaks or sunlit edges as weather systems move through.'
     },
     {
       id: 'dramatic-storms-golden',
-      group: 'astro-storms',
-      groupTitle: 'Night Sky & Storm Dynamics',
+      group: 'storm-dynamics',
+      groupTitle: 'Storm Dynamics',
       name: 'Dramatic Storms / Golden Hour Light',
-      score: clamp(Math.round((d.cloudMid * 0.4) + (d.pressureTrend > 0 ? 35 : 10) + (d.visibilityKm > 15 ? 25 : 0))),
-      desc: 'Passing storm edges allowing low directional golden sunlight.',
-      formulaSummary: '40% Mid-Level Cloud + Rising Barometric Pressure (+35%) + High Visibility (+25%)',
-      fieldTip: 'Watch for rainbows opposite the sun immediately after rain showers clear near sunset or sunrise.'
+      score: dramaticStormGoldenScore,
+      desc: 'Dynamic storm clouds meeting low-angle golden or twilight light.',
+      formulaSummary: 'Mid Cloud + Rising Pressure / Clarity, weighted by Low Sun / Twilight',
+      fieldTip: 'Check the sky right as showers ease near morning or evening—clearing edges often catch dramatic warm light.'
     }
   ];
 }
 
-function renderPhenomenaGroups(hourData) {
-  const scores = computeScores(hourData);
+function computeScoresWithTrends(hourData, prevData) {
+  const currentItems = computeScoresForHour(hourData);
+  const prevItems = prevData ? computeScoresForHour(prevData) : null;
+  const prevMap = new Map();
+
+  if (prevItems) {
+    prevItems.forEach(item => prevMap.set(item.id, item.score));
+  }
+
+  return currentItems.map(item => {
+    if (!prevData || !prevMap.has(item.id)) {
+      return {
+        ...item,
+        delta: null,
+        trendSymbol: '—',
+        trendClass: 'trend-flat',
+        trendLabel: 'Baseline hour'
+      };
+    }
+
+    const prevScore = prevMap.get(item.id);
+    const delta = item.score - prevScore;
+
+    if (delta >= 5) {
+      return {
+        ...item,
+        delta,
+        trendSymbol: '↑',
+        trendClass: 'trend-up',
+        trendLabel: `Rising (+${delta} pts vs prior hr)`
+      };
+    }
+    if (delta <= -5) {
+      return {
+        ...item,
+        delta,
+        trendSymbol: '↓',
+        trendClass: 'trend-down',
+        trendLabel: `Falling (${delta} pts vs prior hr)`
+      };
+    }
+    return {
+      ...item,
+      delta,
+      trendSymbol: '→',
+      trendClass: 'trend-flat',
+      trendLabel: `Steady (${delta >= 0 ? '+' : ''}${delta} pts vs prior hr)`
+    };
+  });
+}
+
+function renderPhenomenaGroups(hourData, prevData) {
+  const scores = computeScoresWithTrends(hourData, prevData);
   const container = document.getElementById('phenomenaGroupsContainer');
 
   const groups = [
     {
       key: 'golden-twilight',
       title: '🌅 Golden & Twilight Light',
-      subtitle: 'Horizon color burns, dawn/dusk transitions, and calm twilight water reflections'
+      subtitle: 'Dawn/dusk color & burn windows, twilight bands, and calm-water reflections'
     },
     {
       key: 'fog-mist',
-      title: '🌫️ Atmospheric Mist & Fog',
-      subtitle: 'Marine layer inversions, radiation fog, and low-lying moisture saturation'
+      title: '🌫️ Mist & Fog',
+      subtitle: 'Low mist, high-humidity saturation, and valley fog conditions'
     },
     {
-      key: 'astro-storms',
-      title: '🌌 Night Sky & Storm Dynamics',
-      subtitle: 'Astrophotography transparency, clearing storm fronts, and high-contrast light'
+      key: 'night-sky',
+      title: '🌌 Night Sky',
+      subtitle: 'Dark-sky clarity and night star visibility'
+    },
+    {
+      key: 'storm-dynamics',
+      title: '⛈️ Storm Dynamics',
+      subtitle: 'Active cloud contrast, pressure shifts, and storm-edge light'
     }
   ];
 
@@ -1117,8 +1514,9 @@ function renderPhenomenaGroups(hourData) {
             <div class="phenomenon-header">
               <span class="phenomenon-title">${item.name}</span>
               <div class="header-right-actions">
+                <span class="trend-pill ${item.trendClass}" title="${item.trendLabel}" aria-label="${item.trendLabel}">${item.trendSymbol}</span>
                 <span class="score-badge ${scoreClass}">${item.score}%</span>
-                <button class="info-icon-btn" data-phenom-id="${item.id}" title="Details & formula for ${item.name}">ℹ️</button>
+                <button class="info-icon-btn" data-phenom-id="${item.id}" title="Details & observation tip for ${item.name}">ℹ️</button>
               </div>
             </div>
             <p class="phenomenon-desc verbose-only-text">${item.desc}</p>
@@ -1150,15 +1548,15 @@ function renderPhenomenaGroups(hourData) {
 function renderMetricsBreakdown(d) {
   const container = document.getElementById('metricsBreakdown');
   const metrics = [
-    { key: 'cloudHigh', label: 'High Cloud', val: `${d.cloudHigh}%`, note: 'Cirrus canvas (30–70% ideal)' },
-    { key: 'cloudMid', label: 'Mid Cloud', val: `${d.cloudMid}%`, note: 'Altocumulus texture' },
-    { key: 'cloudLow', label: 'Low Cloud', val: `${d.cloudLow}%`, note: '<15% keeps horizon open' },
-    { key: 'windSpeed', label: 'Wind Speed', val: `${d.windSpeed} mph`, note: '<4 mph for glassy water' },
-    { key: 'windGusts', label: 'Wind Gusts', val: `${d.windGust} mph`, note: 'Tripod stability check' },
+    { key: 'cloudHigh', label: 'High Cloud', val: `${d.cloudHigh}%`, note: 'Cirrus layer (25–75% ideal)' },
+    { key: 'cloudMid', label: 'Mid Cloud', val: `${d.cloudMid}%`, note: 'Mid-level cloud texture' },
+    { key: 'cloudLow', label: 'Low Cloud', val: `${d.cloudLow}%`, note: '<20% keeps horizon open' },
+    { key: 'windSpeed', label: 'Wind Speed', val: `${d.windSpeed} mph`, note: '<4 mph for calm water' },
+    { key: 'windGusts', label: 'Wind Gusts', val: `${d.windGust} mph`, note: 'Surface gustiness' },
     { key: 'humidity', label: 'Humidity', val: `${d.humidity}%`, note: '≥88% supports fog/mist' },
     { key: 'dewPointDepression', label: 'Dew Pt Spread', val: `${d.dewPointDepression}°C`, note: '<2.0°C condenses mist' },
     { key: 'visibility', label: 'Visibility', val: `${d.visibilityKm} km`, note: '>15 km for crisp air' },
-    { key: 'waveHeight', label: 'Swell / Wave', val: `${d.waveHeightFt} ft`, note: 'Coastal surf energy' },
+    { key: 'waveHeight', label: 'Swell / Wave', val: `${d.waveHeightFt} ft`, note: 'Open-water wave height' },
     { key: 'tideLevel', label: 'Tide Level', val: `${d.tideHeightFt} ft`, note: 'Relative coastal stage' }
   ];
 

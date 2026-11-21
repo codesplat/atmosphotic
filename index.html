@@ -16,7 +16,7 @@
   <header class="app-header">
     <div class="brand-container">
       <h1 class="logo-text">Atmos<span>Photic</span></h1>
-      <span class="badge-tag">Alpha v0.4.8</span>
+      <span class="badge-tag">Alpha v0.5.1</span>
     </div>
     
     <!-- Search Bar + Second Row Action Bar (Concise/Verbose + Favorite + Info) -->
@@ -98,7 +98,8 @@
         <div class="timeline-header">
           <div class="title-row">
             <h4>48-Hour Prediction Horizon</h4>
-            <button class="info-icon-btn" data-info-key="predictionHorizon" title="About the 48-Hour Prediction Horizon">ℹ️</button>
+            <span id="solarPhaseBadge" class="solar-phase-badge">--</span>
+            <button class="info-icon-btn" data-info-key="predictionHorizon" title="About the 48-Hour Prediction Horizon & Solar Phase">ℹ️</button>
           </div>
           <div id="activeTimeLabel" class="time-readout">--</div>
         </div>
@@ -117,7 +118,7 @@
         <div class="section-title-wrap flex-between compact-section-head">
           <div class="title-row">
             <h3>Phenomena Predictions</h3>
-            <button class="info-icon-btn" data-info-key="phenomenaOverview" title="How phenomena scores are calculated">ℹ️</button>
+            <button class="info-icon-btn" data-info-key="phenomenaOverview" title="How phenomena scores & trends are calculated">ℹ️</button>
           </div>
           <button id="togglePhenomenaScrollBtn" class="scroll-mode-toggle-btn active" title="Toggle independent scrolling pane so you can scrub the 48h slider while watching a specific prediction" aria-pressed="true">
             <span class="scroll-toggle-icon">⇅</span> <span id="togglePhenomenaScrollLabel">Scroll Pane</span>
@@ -139,7 +140,7 @@
           <h4>Atmospheric & Ocean Metrics (Live Feed)</h4>
           <button class="info-icon-btn" data-info-key="metricsOverview" title="About live atmospheric and marine metrics">ℹ️</button>
         </div>
-        <p class="verbose-only-text subtext">Tap any metric's ℹ️ icon to view its photographic significance and ideal threshold.</p>
+        <p class="verbose-only-text subtext">Tap any metric's ℹ️ icon to view how it shapes sky light and weather observation.</p>
       </div>
       <div id="metricsBreakdown" class="metrics-grid"></div>
     </section>

@@ -1,4 +1,4 @@
-/* AtmosPhotic PWA Stylesheet - Alpha v0.4.8 */
+/* AtmosPhotic PWA Stylesheet - Alpha v0.5.1 */
 
 :root {
   --bg-dark: #0B0E17;
@@ -402,8 +402,43 @@ body.streamlined-mode .verbose-only-text {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 0.5rem;
   margin-bottom: 0.6rem;
+}
+
+.solar-phase-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.16rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card-elevated);
+  color: var(--text-secondary);
+}
+
+.solar-phase-badge.phase-golden {
+  color: #FBBF24;
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.solar-phase-badge.phase-twilight {
+  color: #C4B5FD;
+  background: rgba(138, 43, 226, 0.2);
+  border-color: rgba(138, 43, 226, 0.45);
+}
+
+.solar-phase-badge.phase-day {
+  color: var(--accent-teal);
+  background: rgba(0, 245, 212, 0.12);
+  border-color: rgba(0, 245, 212, 0.35);
+}
+
+.solar-phase-badge.phase-night {
+  color: #93C5FD;
+  background: rgba(59, 130, 246, 0.16);
+  border-color: rgba(59, 130, 246, 0.4);
 }
 
 .time-readout {
@@ -578,6 +613,33 @@ body.streamlined-mode .verbose-only-text {
   align-items: center;
   gap: 0.3rem;
   flex-shrink: 0;
+}
+
+.trend-pill {
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.2rem 0.38rem;
+  border-radius: 5px;
+  border: 1px solid transparent;
+}
+
+.trend-up {
+  color: #34D399;
+  background: rgba(52, 211, 153, 0.14);
+  border-color: rgba(52, 211, 153, 0.35);
+}
+
+.trend-down {
+  color: #F87171;
+  background: rgba(248, 113, 113, 0.14);
+  border-color: rgba(248, 113, 113, 0.35);
+}
+
+.trend-flat {
+  color: var(--text-secondary);
+  background: rgba(148, 163, 184, 0.12);
+  border-color: rgba(148, 163, 184, 0.22);
 }
 
 .score-badge {
