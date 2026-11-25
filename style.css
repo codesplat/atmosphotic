@@ -1,4 +1,4 @@
-/* AtmosPhotic PWA Stylesheet - Alpha v0.5.1 */
+/* AtmosPhotic PWA Stylesheet - Alpha v0.5.2 */
 
 :root {
   --bg-dark: #0B0E17;
@@ -407,6 +407,39 @@ body.streamlined-mode .verbose-only-text {
   margin-bottom: 0.6rem;
 }
 
+.timeline-controls-right {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.horizon-lock-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: var(--bg-card-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 0.24rem 0.55rem;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.horizon-lock-btn:hover {
+  border-color: var(--accent-teal);
+  color: var(--text-primary);
+}
+
+.horizon-lock-btn.locked {
+  background: rgba(245, 158, 11, 0.16);
+  border-color: rgba(245, 158, 11, 0.5);
+  color: #FBBF24;
+}
+
 .solar-phase-badge {
   font-size: 0.72rem;
   font-weight: 700;
@@ -450,12 +483,21 @@ body.streamlined-mode .verbose-only-text {
   border-radius: 6px;
 }
 
+.slider-control-wrap.slider-locked {
+  opacity: 0.65;
+}
+
 .time-slider {
   width: 100%;
   accent-color: var(--accent-teal);
   height: 6px;
   cursor: pointer;
   margin: 0.45rem 0;
+}
+
+.time-slider:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .timeline-ticks {
@@ -724,10 +766,17 @@ body.streamlined-mode .verbose-only-text {
 }
 
 .metric-val {
-  font-size: 1.05rem;
+  font-size: 1.02rem;
   font-weight: 700;
   color: var(--text-primary);
   margin-top: 0.15rem;
+  word-break: break-word;
+}
+
+.metric-val.metric-val-na {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-secondary);
 }
 
 .metric-verbose-note {
@@ -842,6 +891,21 @@ body.streamlined-mode .verbose-only-text {
 
 .modal-body ul {
   padding-left: 1.15rem;
+}
+
+.modal-common-term {
+  color: var(--text-primary) !important;
+  font-weight: 600;
+}
+
+.modal-safety-box {
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  color: #FDE68A;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  margin-top: 0.65rem;
 }
 
 .modal-formula-box {
@@ -996,6 +1060,6 @@ body.streamlined-mode .verbose-only-text {
   }
 
   .metric-val {
-    font-size: 0.96rem;
+    font-size: 0.92rem;
   }
 }

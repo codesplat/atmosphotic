@@ -2,19 +2,16 @@
 
 ## Rolling Changelog
 
+### Alpha v0.5.2 - November 25, 2026
+- **48-Hour Prediction Horizon Slider Lock**: Added a persistent **Unlocked / Locked** toggle (`🔓` / `🔒`) next to the horizon readout that disables slider input when locked to prevent accidental time scrubbing while scrolling on mobile screens.
+- **Spatial View Tidal Water Detection**: Checks whether tidal ocean or bay waters lie within the active Spatial View radius (`1 mi`, `5 mi`, or `10 mi`). When no tidal waters fall inside the active radius, **Tide Level** and **Swell / Wave** display **Not Applicable**.
+- **Sunset Green Flash Prediction + Eye Safety Warning**: Added **Sunset Green Flash** to **Golden & Twilight Light**, gated to the sunset window with low horizon cloud cover and high visibility, including an eye-safety warning in its info popover.
+- **Common Term in Prediction Info Popovers**: Added a dedicated **Common Term** section at the top of every prediction's `ℹ️` popover to give non-technical users the everyday name or description.
+- **Expanded Atmospheric, Solar & Lunar Metrics**: Added **Chance of Rain** (`precipitation_probability`), **Sunrise**, **Sunset**, **Moonrise**, **Moonset**, and **Moon Phase** (phase name, illumination %, and lunar cycle progression) to **Atmospheric & Ocean Metrics (Live Feed)**.
+- **Service Worker Cache Bump**: Updated `sw.js` cache key to `atmosphotic-alpha-v5.2`.
+
 ### Alpha v0.5.1 - November 21, 2026
-- **Crepuscular Rays Card**: Replaced `Anticrepuscular Rays` with `Crepuscular Rays` in **Golden & Twilight Light**, updating the card ID, description, modal formula summary, and observation tip to reflect sunbeams fanning through broken clouds or gaps around a low sun.
-- **Service Worker Cache Bump**: Updated `sw.js` cache key to `atmosphotic-alpha-v5.1`.
+- **Crepuscular Rays Card**: Replaced `Anticrepuscular Rays` with `Crepuscular Rays` in **Golden & Twilight Light**.
 
 ### Alpha v0.5.0 - November 21, 2026
-- **Solar & Time-of-Day Context**: Added Open-Meteo `daily.sunrise` and `daily.sunset` fetching plus solar elevation calculation so sunrise/sunset windows, dawn/dusk blue hour, daytime, and night conditions are evaluated against time of day, with a live phase badge in the horizon header.
-- **Reorganized Groups & Cards**:
-  - **Golden & Twilight Light**: `Sunrise Color`, `Sunrise Burn`, `Sunset Color`, `Sunset Burn`, `Burn Potential` (time-agnostic mid/high cloud layer readiness index for future evaluation/consolidation), `Dawn Blue Hour`, `Dusk Blue Hour`, `Earth's Shadow & Belt of Venus`, `Anticrepuscular Rays`, and `Water Reflections` (time-aware across night, twilight/horizon, and daytime calm water).
-  - **Mist & Fog**: `Fog & Low Mist` and `Valley Fog`.
-  - **Night Sky**: `Milky Way Clarity`.
-  - **Storm Dynamics**: `Storm Light` and `Dramatic Storms / Golden Hour Light`.
-- **Hour-Over-Hour Trend Indicators**: Added `↑` (rising), `↓` (falling), and `→` (steady) badges comparing each prediction score against the prior hour.
-- **Sky & Weather Observation Tips**: Updated card descriptions and modal tips to focus on observing light and weather mechanics for broader audiences.
-
-### Alpha v0.4.8 - November 19, 2026
-- **Cross-Platform Native Scrollbar**: Removed custom overlay scroll indicators in favor of standard native scrolling (`overflow-y: auto`) with `scrollbar-width` and `::-webkit-scrollbar` styling.
+- **Solar & Time-of-Day Context**: Added Open-Meteo `daily.sunrise` and `daily.sunset` fetching plus solar elevation calculation, reorganized groups, time-aware `Water Reflections`, and hour-over-hour trend arrows.

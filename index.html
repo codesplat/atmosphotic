@@ -16,7 +16,7 @@
   <header class="app-header">
     <div class="brand-container">
       <h1 class="logo-text">Atmos<span>Photic</span></h1>
-      <span class="badge-tag">Alpha v0.5.1</span>
+      <span class="badge-tag">Alpha v0.5.2</span>
     </div>
     
     <!-- Search Bar + Second Row Action Bar (Concise/Verbose + Favorite + Info) -->
@@ -101,9 +101,17 @@
             <span id="solarPhaseBadge" class="solar-phase-badge">--</span>
             <button class="info-icon-btn" data-info-key="predictionHorizon" title="About the 48-Hour Prediction Horizon & Solar Phase">ℹ️</button>
           </div>
-          <div id="activeTimeLabel" class="time-readout">--</div>
+          <div class="timeline-controls-right">
+            <button id="lockHorizonBtn" class="horizon-lock-btn" aria-pressed="false" title="Lock slider to prevent accidental changes while scrolling">
+              <span id="lockHorizonIcon" aria-hidden="true">🔓</span>
+              <span id="lockHorizonLabel">Unlocked</span>
+            </button>
+            <div id="activeTimeLabel" class="time-readout">--</div>
+          </div>
         </div>
-        <input type="range" id="timeSlider" min="0" max="47" value="0" class="time-slider">
+        <div class="slider-control-wrap" id="timeSliderWrap">
+          <input type="range" id="timeSlider" min="0" max="47" value="0" class="time-slider" aria-label="48-Hour Prediction Horizon Slider">
+        </div>
         <div class="timeline-ticks">
           <span>Current</span>
           <span>+12h</span>
@@ -133,14 +141,14 @@
       </section>
     </div>
 
-    <!-- Atmospheric Parameters Detail Breakdown -->
+    <!-- Atmospheric & Ocean Parameters Detail Breakdown -->
     <section class="details-section card">
       <div class="section-title-wrap">
         <div class="title-row">
           <h4>Atmospheric & Ocean Metrics (Live Feed)</h4>
-          <button class="info-icon-btn" data-info-key="metricsOverview" title="About live atmospheric and marine metrics">ℹ️</button>
+          <button class="info-icon-btn" data-info-key="metricsOverview" title="About live atmospheric, solar, lunar, and marine metrics">ℹ️</button>
         </div>
-        <p class="verbose-only-text subtext">Tap any metric's ℹ️ icon to view how it shapes sky light and weather observation.</p>
+        <p class="verbose-only-text subtext">Tap any metric's ℹ️ icon to view how it shapes sky light, sun/moon cycles, and weather observation.</p>
       </div>
       <div id="metricsBreakdown" class="metrics-grid"></div>
     </section>
